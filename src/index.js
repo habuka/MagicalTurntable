@@ -2,7 +2,61 @@ import P5 from "p5";
 import { Player, Ease } from "textalive-app-api";
 
 // パラメータ関連
-let xy;
+
+/**
+ * 拡大率の基準とする横幅(px)
+ */
+const default_width = 1300;
+
+
+/**
+ * 拡大率の基準とする高さ(px)
+ */
+const default_height = 1000;
+
+/**
+ * デフォルトのRPM
+ */
+const rpm_default = 5;
+
+/**
+ * 通常再生時に歌詞の表示が始まる角度[deg]
+ * キャンバスの回転を加味しない見かけ上の位置
+ * レコード針がある位置
+ */
+const text_area_angle_begin = 60;
+
+/**
+ * 歌詞を表示する領域(上限)。
+ * キャンバスの回転を加味しない見かけ上の角度[deg]
+ */
+const text_area_angle_end = 300
+
+/**
+ * 歌詞ごとの最低間隔[deg]
+ * デフォルトのRPMでこの間隔以下になる場合、一時的に回転速度を上げる
+ */
+const min_text_interval_deg = 7.2;
+
+/**
+ * レコード針の回転角度の下限値[deg]
+ * 曲の初めはこの位置
+ */
+const angle_needle_min = 16.5;
+
+/**
+ * レコード針の回転角度の上限値[deg]
+ * 曲の終わりはこの位置
+ */
+const angle_needle_max = 38;
+
+/**
+ * アプリ全体の拡大率
+ */
+let genaral_magnification = 0;
+
+
+let needle_pos;
 
 /**
  * 歌詞ごとのキャンバス上の位置と角度{X座標, Y座標, 角度}
@@ -11,7 +65,7 @@ let xy;
 let char_pos = [];
 
 /**
- * 歌詞ごとの回転角度[rad]のリスト
+ * 歌詞ごとの回転角度[deg]のリスト
  * min_text_interval_degが最短の間隔になるように調整されている
  */
 let rotation_list = [];
@@ -22,27 +76,14 @@ let rotation_list = [];
 let starttime_list = [];
 
 /**
- * デフォルトのRPM
+ * レコードの中心座標
  */
-const rpm_default = 5;
+let record_pos = [];
 
 /**
- * 歌詞を表示する領域(上限)。
- * キャンバスの回転を加味しない見かけ上の角度
+ * 針の回転軸座標
  */
-const text_area_angle_begin = 180
-
-/**
- * 歌詞を表示する領域(下限)。
- * キャンバスの回転を加味しない見かけ上の角度
- */
-const text_area_angle_end = 0;
-
-/**
- * 歌詞ごとの最低間隔[deg]
- * デフォルトのRPMでこの間隔以下になる場合、一時的に回転速度を上げる
- */
-const min_text_interval_deg = 7.2;
+let needle_axis_pos = [];
 
 /**
  * キャンバス自体の回転角度
@@ -74,17 +115,17 @@ player.addListener({
       // });
 
       // 生きること / nogumi feat. 初音ミク
-      // player.createFromSongUrl("https://piapro.jp/t/fnhJ/20230131212038", {
-      //   video: {
-      //     // 音楽地図訂正履歴: https://songle.jp/songs/2427949/history
-      //     beatId: 4267300,
-      //     chordId: 2405033,
-      //     repetitiveSegmentId: 2475606,
-      //     // 歌詞タイミング訂正履歴: https://textalive.jp/lyrics/piapro.jp%2Ft%2FfnhJ%2F20230131212038
-      //     lyricId: 56131,
-      //     lyricDiffId: 9638
-      //   },
-      // });
+      player.createFromSongUrl("https://piapro.jp/t/fnhJ/20230131212038", {
+        video: {
+          // 音楽地図訂正履歴: https://songle.jp/songs/2427949/history
+          beatId: 4267300,
+          chordId: 2405033,
+          repetitiveSegmentId: 2475606,
+          // 歌詞タイミング訂正履歴: https://textalive.jp/lyrics/piapro.jp%2Ft%2FfnhJ%2F20230131212038
+          lyricId: 56131,
+          lyricDiffId: 9638
+        },
+      });
 
       // 唱明者 / すこやか大聖堂 feat. KAITO
       // player.createFromSongUrl("https://piapro.jp/t/Vfrl/20230120182855", {
@@ -100,17 +141,17 @@ player.addListener({
       // });
 
       // ネオンライトの海を往く / Ponchi♪ feat. 初音ミク
-      player.createFromSongUrl("https://piapro.jp/t/fyxI/20230203003935", {
-        video: {
-          // 音楽地図訂正履歴: https://songle.jp/songs/2427951/history
-          beatId: 4267373,
-          chordId: 2405138,
-          repetitiveSegmentId: 2475664,
-          // 歌詞タイミング訂正履歴: https://textalive.jp/lyrics/piapro.jp%2Ft%2FfyxI%2F20230203003935
-          lyricId: 56096,
-          lyricDiffId: 9639
-        },
-      });
+      // player.createFromSongUrl("https://piapro.jp/t/fyxI/20230203003935", {
+      //   video: {
+      //     // 音楽地図訂正履歴: https://songle.jp/songs/2427951/history
+      //     beatId: 4267373,
+      //     chordId: 2405138,
+      //     repetitiveSegmentId: 2475664,
+      //     // 歌詞タイミング訂正履歴: https://textalive.jp/lyrics/piapro.jp%2Ft%2FfyxI%2F20230203003935
+      //     lyricId: 56096,
+      //     lyricDiffId: 9639
+      //   },
+      // });
 
       // ミュウテイション / Rin（Kuroneko Lounge） feat. 初音ミク
       // player.createFromSongUrl("https://piapro.jp/t/Wk83/20230203141007", {
@@ -204,18 +245,26 @@ document.querySelector("#stop").addEventListener("click", () => {
 // p5.js を初期化
 new P5((p5) => {
   // キャンバスの大きさなどを計算
-  const width = Math.min(1600, window.innerWidth);
-  const height = Math.min(800, window.innerHeight);
-  const margin = 30;
-  const numChars = 50;
-  const textAreaWidth = (width - margin * 2) / 2;
+  const width = default_width;
+  const height = default_height;
   const frame_rate = 30;
+  record_pos = [width / 2 - 100, height / 2];
+  needle_axis_pos = [1087, 244];
+
+  p5.preload = () => {
+    // 画像を読み込む
+    img_disc = p5.loadImage("../img/disc.png"); // ディスク
+    img_needle = p5.loadImage("../img/needle.png"); // 針
+    img_frame = p5.loadImage("../img/frame.png"); // フレーム
+  }
 
   // キャンバスを作成
   p5.setup = () => {
-    p5.createCanvas(width, height);
+    p5.createCanvas(p5.windowWidth, p5.windowHeight);
+    p5.ResizeWindow();
     p5.translate(width / 2, height / 2);
     p5.colorMode(p5.HSB, 100);
+    p5.angleMode(p5.DEGREES);
     p5.frameRate(frame_rate);
     p5.background(40);
     p5.noStroke();
@@ -232,9 +281,14 @@ new P5((p5) => {
     // 現在の再生位置
     const position = player.timer.position;
 
-    // 背景
-    p5.background(40);
-    p5.ellipse(width / 2, height / 2 , height / 2 - 30, height / 2 - 30);
+    p5.resizeCanvas(p5.windowWidth, p5.windowHeight);
+    p5.scale(genaral_magnification);
+
+    player.volume = 20;
+
+    // 筐体
+    p5.imageMode(p5.CORNER);
+    p5.image(img_frame, 0, 0);
     const beat = player.findBeat(position);
     if (beat) {
       const progress = beat.progress(position);
@@ -242,6 +296,27 @@ new P5((p5) => {
       p5.fill(0, 0, 0, Ease.quintOut(progress) * 60);
       p5.rect(0, rectHeight, width, height - rectHeight);
     }
+
+    // ディスク回転
+    p5.push();
+    p5.imageMode(p5.CENTER);
+    let angle_disc = rpm_default / 60000 * 360 * position;
+    p5.translate(record_pos[0], record_pos[1]);
+    p5.rotate(angle_disc);
+    p5.image(img_disc, 0, 0);
+    p5.pop();
+
+    // 針
+    p5.push();
+    p5.imageMode(p5.CORNER);
+    let angle_needle = (angle_needle_min
+                        + (angle_needle_max - angle_needle_min) * position / (player.video.duration));
+    p5.translate(needle_axis_pos[0], needle_axis_pos[1]);
+    p5.rotate(angle_needle);
+    p5.translate(-needle_axis_pos[0], -needle_axis_pos[1]);
+    p5.image(img_needle, 0, 0);
+    p5.pop();
+    console.log(player.video.duration, angle_needle);
 
     // このフレームでのキャンバス角度を決める
     // 次の発声文字から歌詞インデックスを取得
@@ -254,68 +329,64 @@ new P5((p5) => {
     angle_canvas = rotation_list[char_index - 1]
                    + (rotation_list[char_index] - rotation_list[char_index - 1]) * per;
 
-    console.log(angle_canvas);
-
     // キャンバス回転
-    p5.translate(width / 2, height / 2);
+    p5.translate(record_pos[0], record_pos[1]);
     p5.rotate(angle_canvas);
-    p5.translate(-width / 2, -height / 2);
-
-    // デバッグ用
-    p5.ellipse(width / 2, 30 , 10, 10);
+    p5.translate(-record_pos[0], -record_pos[1]);
 
     // 歌詞
     // - 再生位置より 100 [ms] 前の時点での発声文字を取得
     // - { loose: true } にすることで発声中でなければ一つ後ろの文字を取得
-    let char = player.video.findChar(position - 5000, { loose: true });
+    let char = player.video.findChar(position - 10000, { loose: true });
 
     if (char) {
       // 位置決めのため、文字が歌詞全体で何番目かも取得しておく
       let index = player.video.findIndex(char);
 
+      // 表示領域(-5°～+365°)に含まれていたら描画する
       while (char) {
-        // console.log(char.text);
-        if (char.endTime + 10000 < position) {
-          // これ以降の文字は表示する必要がない
-          break;
-        }
-        if (char.startTime < position + 100) {
-          let transparency;
-          let size = 39;
-
-          // 100 [ms] かけてフェードインしてくる
-          if (position < char.startTime) {
-            const progress = 1 - (char.startTime - position) / 100;
-            const eased = Ease.circIn(progress);
-            transparency = progress;
-            size = 39 * eased + Math.min(width/2, height/2) * (1 - eased);
-          } else if (char.endTime + 10000 < position) {
-            // 160 [ms] かけてフェードアウトする
-            const progress = (position - char.endTime) / 10000;
-            const eased = Ease.quintIn(progress);
-            transparency = 1 - eased;
-            y = -eased * (height / 2);
-          } else {
-          // 発声区間中は完全に不透明
-            transparency = 1;
+        if ((rotation_list[index] -5 <= angle_canvas) &&
+            (angle_canvas <= rotation_list[index] + 300)) {
+          if (char.endTime + 10000 < position) {
+            // これ以降の文字は表示する必要がない
+            break;
           }
-          if (char_pos[index] == null) {
-            xy = p5.GetNeedlePos(rotation_list[index]);
-            char_pos[index] = [xy[0], xy[1], xy[2]];
+          if (char.startTime < position + 100) {
+            let transparency;
+            let size = 39;
+
+            // 100 [ms] かけてフェードインしてくる
+            if (position < char.startTime) {
+              const progress = 1 - (char.startTime - position) / 100;
+              const eased = Ease.circIn(progress);
+              transparency = progress;
+              size = 39 * eased + Math.min(width/2, height/2) * (1 - eased);
+            } else if (rotation_list[index] + 270 <= angle_canvas) {
+              // 30°かけてフェードアウトする
+              transparency = 1 - (angle_canvas - rotation_list[index] - 270) / 30;
+              console.log(transparency);
+            } else {
+              // 発声区間中は完全に不透明
+              transparency = 1;
+            }
+            if (char_pos[index] == null) {
+              needle_pos = p5.GetNeedlePos(rotation_list[index]);
+              char_pos[index] = [needle_pos[0], needle_pos[1], needle_pos[2]];
+            }
+
+            p5.fill(0, 0, 100, transparency * 100);
+            p5.textSize(size);
+            // needle_pos = p5.GetNeedlePos(angle_canvas);
+            needle_pos = p5.GetNeedlePos(rotation_list[index]);
+            p5.push();
+            p5.translate(char_pos[index][0], char_pos[index][1]);
+            p5.rotate(char_pos[index][2]);
+            p5.translate(-char_pos[index][0], -char_pos[index][1]);
+            p5.text(char.text, char_pos[index][0], char_pos[index][1]);
+
+            // console.log(char.text, needle_pos[0], needle_pos[1], needle_pos[2]);
+            p5.pop();
           }
-
-          p5.fill(0, 0, 100, transparency * 100);
-          p5.textSize(size);
-          // xy = p5.GetNeedlePos(angle_canvas);
-          xy = p5.GetNeedlePos(rotation_list[index]);
-          p5.push();
-          p5.translate(char_pos[index][0], char_pos[index][1]);
-          p5.rotate(char_pos[index][2]);
-          p5.translate(-char_pos[index][0], -char_pos[index][1]);
-          p5.text(char.text, char_pos[index][0], char_pos[index][1]);
-
-          // console.log(char.text, xy[0], xy[1], xy[2]);
-          p5.pop();
         }
         char = char.next;
         index++;
@@ -323,31 +394,21 @@ new P5((p5) => {
     }
   };
 
-  p5.GetCharPos = (index) => {
-    rad = -(index % numChars) * (2 * Math.PI / numChars) + Math.PI / 2; // 初期値を真下方向に
-    radius = height / 2 - 30;
-    x = radius * Math.cos(rad) + width / 2;
-    y = radius * Math.sin(rad) + height / 2;
-    deg = (rad - Math.PI / 2);
-    return [x, y, deg];
-  }
-
 /**
  * @fn GetNeedlePos
  * @brief キャンバスの回転を考慮したレコード針の場所(歌詞が出る場所)を取得する
- * @param[in] angle: 現在のキャンバスの回転角度
+ * @param[in] angle: 現在のキャンバスの回転角度[deg]
  * @retval x: レコード針のX座標
  * @retval y: レコード針のX座標
  * @retval deg: 文字の回転角度
  */
-  p5.GetNeedlePos = (angle) => {
-    rad = Math.PI / 2 - angle; // 初期値を真下方向に
-    radius = height / 2 - 30;
-    x = radius * Math.cos(rad) + width / 2;
-    y = radius * Math.sin(rad) + height / 2;
-    deg = (rad - Math.PI / 2);
+  p5.GetNeedlePos = (deg) => {
+    rad = Deg2Rad(text_area_angle_begin - deg); // 初期値を真下方向に
+    radius = height / 2 - 100;
+    x = radius * Math.cos(rad) + record_pos[0];
+    y = radius * Math.sin(rad) + record_pos[1];
     // console.log(x, y, deg, angle);
-    return [x, y, deg];
+    return [x, y, text_area_angle_begin - deg - 90];
   }
 
 /**
@@ -365,13 +426,39 @@ new P5((p5) => {
     }
     return next_char;
   }
+
+  p5.windowResized = () => {
+    p5.ResizeWindow();
+  }
+
+/**
+ * @fn ResizeWindow
+ * @brief 全体をウインドウサイズに合わせる
+ */
+  p5.ResizeWindow = () => {
+    // 現在のウインドウサイズを取得
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+
+    // 短い方に合わせてデフォルトサイズに対する拡大率を決める
+    let magnification_width = width / default_width;
+    let magnification_height = height / default_height;
+
+    if (magnification_width < magnification_height) {
+      genaral_magnification = magnification_width;
+    } else {
+      genaral_magnification = magnification_height;
+    }
+    // p5.resizeCanvas(p5.windowWidth, p5.windowHeight);
+    // p5.scale(genaral_magnification);
+    button = p5.createButton("じゃんけん");
+  }
 });
 
 const CreatePositionList = () => {
   let index = 0;
   let previous_char_time = 0;
   let total_rotation_deg = 0;
-  let total_rotation_pi = 0;
 
   let rotation_time;
   let char = player.video.findChar(0, {loose: true}); // 最初の発声文字
@@ -386,8 +473,7 @@ const CreatePositionList = () => {
       // 文字が重なってしまう場合、規定の間隔だけずらす
       total_rotation_deg += min_text_interval_deg;
     }
-    total_rotation_pi = Deg2Rad(total_rotation_deg);
-    rotation_list[index] = total_rotation_pi;
+    rotation_list[index] = total_rotation_deg;
 
     previous_char_time = char.startTime;
     starttime_list[index] = char.startTime;
