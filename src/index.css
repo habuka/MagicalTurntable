@@ -60,6 +60,15 @@ canvas {
   opacity: 0;
 }
 
+#startstop {
+  position: absolute;
+  width: 105px;
+  height: 105px;
+  background: transparent;
+  /* border: none; */
+  z-index: 201;
+}
+
 .inactive {
   display: none !important;
 }

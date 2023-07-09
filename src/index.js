@@ -59,6 +59,11 @@ let genaral_magnification = 0;
 let needle_pos;
 
 /**
+ *
+ */
+let start_or_stop = 0;
+
+/**
  * 歌詞ごとのキャンバス上の位置と角度{X座標, Y座標, 角度}
  * キャンバスの回転を加味した角度
  */
@@ -76,6 +81,26 @@ let rotation_list = [];
 let starttime_list = [];
 
 /**
+ * 回転角度リストの要素数
+ * 最初に0、最後に楽曲の終端を格納するので要素数は歌詞の文字数 + 2
+ */
+let rotation_list_size = 0;
+
+/**
+ * 再生モードの定義
+ * 0: 停止
+ * 1: 再生
+ * 2: 停止中皿回し
+ * 3: 再生中皿回し
+ */
+let play_mode = 0;
+
+/**
+ * 直前の皿回し処理におけるポインター位置のディスク上の見かけの角度
+ */
+let previous_pointer_angle = 0;
+
+/**
  * レコードの中心座標
  */
 let record_pos = [];
@@ -90,6 +115,11 @@ let needle_axis_pos = [];
  */
 let angle_canvas = 0;
 
+/**
+ * レコードの回転角度
+ */
+let angle_disc = 0;
+
 // プレイヤーの初期化 / Initialize TextAlive Player
 const player = new Player({
   // トークンは https://developer.textalive.jp/profile で取得したものを使う
@@ -102,30 +132,30 @@ player.addListener({
   onAppReady: (app) => {
     if (!app.managed) {
       // king妃jack躍 / 宮守文学 feat. 初音ミク
-      // player.createFromSongUrl("https://piapro.jp/t/ucgN/20230110005414", {
-      //   video: {
-      //     // 音楽地図訂正履歴: https://songle.jp/songs/2427948/history
-      //     beatId: 4267297,
-      //     chordId: 2405019,
-      //     repetitiveSegmentId: 2475577 /* 2023/5/6 更新 */,
-      //     // 歌詞タイミング訂正履歴: https://textalive.jp/lyrics/piapro.jp%2Ft%2FucgN%2F20230110005414
-      //     lyricId: 56092,
-      //     lyricDiffId: 9636
-      //   },
-      // });
-
-      // 生きること / nogumi feat. 初音ミク
-      player.createFromSongUrl("https://piapro.jp/t/fnhJ/20230131212038", {
+      player.createFromSongUrl("https://piapro.jp/t/ucgN/20230110005414", {
         video: {
-          // 音楽地図訂正履歴: https://songle.jp/songs/2427949/history
-          beatId: 4267300,
-          chordId: 2405033,
-          repetitiveSegmentId: 2475606,
-          // 歌詞タイミング訂正履歴: https://textalive.jp/lyrics/piapro.jp%2Ft%2FfnhJ%2F20230131212038
-          lyricId: 56131,
-          lyricDiffId: 9638
+          // 音楽地図訂正履歴: https://songle.jp/songs/2427948/history
+          beatId: 4267297,
+          chordId: 2405019,
+          repetitiveSegmentId: 2475577 /* 2023/5/6 更新 */,
+          // 歌詞タイミング訂正履歴: https://textalive.jp/lyrics/piapro.jp%2Ft%2FucgN%2F20230110005414
+          lyricId: 56092,
+          lyricDiffId: 9636
         },
       });
+
+      // 生きること / nogumi feat. 初音ミク
+      // player.createFromSongUrl("https://piapro.jp/t/fnhJ/20230131212038", {
+      //   video: {
+      //     // 音楽地図訂正履歴: https://songle.jp/songs/2427949/history
+      //     beatId: 4267300,
+      //     chordId: 2405033,
+      //     repetitiveSegmentId: 2475606,
+      //     // 歌詞タイミング訂正履歴: https://textalive.jp/lyrics/piapro.jp%2Ft%2FfnhJ%2F20230131212038
+      //     lyricId: 56131,
+      //     lyricDiffId: 9638
+      //   },
+      // });
 
       // 唱明者 / すこやか大聖堂 feat. KAITO
       // player.createFromSongUrl("https://piapro.jp/t/Vfrl/20230120182855", {
@@ -198,25 +228,21 @@ player.addListener({
 
   onTextLoad: (body) => {
     // Webフォントを確実に読み込むためDOM要素に歌詞を貼り付ける
+    console.log("player.onTextLoad");
     document.querySelector("#dummy").textContent = body?.text;
   },
 
   onVideoReady: () => {
-    if (!player.app.managed) {
-      document.querySelector("#message").className = "active";
-    }
+    console.log("player.onVideoReady");
+    CreatePositionList();
     document.querySelector("#overlay").className = "inactive";
   },
 
   onPlay: () => {
-    document.querySelector("#message").className = "inactive";
     console.log("player.onPlay");
   },
 
   onPause: () => {
-    if (!player.app.managed) {
-      document.querySelector("#message").className = "active";
-    }
     console.log("player.onPause");
   },
 
@@ -229,18 +255,123 @@ player.addListener({
   },
 });
 
-// 再生ボタン
-document.querySelector("#play").addEventListener("click", () => {
-  player.requestPlay();
-  // 読み込み時に発声タイミングからレコード上の配置リストを作る
-  CreatePositionList();
-  angle_canvas = 0;
+// START/STOPボタン
+document.querySelector("#startstop").addEventListener("click", () => {
+  switch (play_mode) {
+  case 0:
+    player.requestPlay();
+    play_mode = 1;
+    break;
+  case 1:
+    player.requestPause();
+    play_mode = 0;
+    break;
+  default:
+    break;
+  }
 });
 
-// 停止ボタン
-document.querySelector("#stop").addEventListener("click", () => {
-  player.requestStop();
+// 皿回し処理
+// マウス操作用イベントハンドラ
+document.addEventListener("mousedown", (e) => {
+  mousedown(e);
 });
+
+// タッチ操作用イベントハンドラ
+document.addEventListener("touchstart", (e) => {
+  mousedown(e.changedTouches[0]);
+});
+
+// 共通処理
+const mousedown = (e) => {
+  console.log("down", e.pageX, e.pageY);
+  if (isInDisc(e.pageX, e.pageY)) {
+    // ディスクがクリックされたら皿回しモードに入る
+    console.log("indisc!!!!");
+
+    // この時点でのポインタ角度を記録
+    previous_pointer_angle = GetAngleOnDisc(e.pageX, e.pageY);
+    if (play_mode == 0) {
+      play_mode = 2;
+    } else if (play_mode == 1) {
+      // 再生停止
+      player.requestPause();
+      play_mode = 3;
+    }
+  }
+}
+
+// マウス操作用イベントハンドラ
+document.addEventListener("mousemove", (e) => {
+  mousemove(e);
+});
+
+// タッチ操作用イベントハンドラ
+document.addEventListener("touchmove", (e) => {
+  mousemove(e.changedTouches[0]);
+});
+
+// 共通処理
+const mousemove = (e) => {
+  // console.log("move", e.pageX, e.pageY);
+  if (play_mode >= 2) {
+    // 皿回しモード中の場合、皿回し処理を行う
+    // TurnDisc(e.pageX, e.pageY);
+    let current_pointer_angle = GetAngleOnDisc(e.pageX, e.pageY);
+    let pointer_angle_dif = -(current_pointer_angle - previous_pointer_angle);
+
+    // ロールオーバーの補正
+    if (pointer_angle_dif > 180) {
+      pointer_angle_dif -= 360;
+    } else if (pointer_angle_dif < -180) {
+      pointer_angle_dif += 360;
+    }
+    console.log(current_pointer_angle, previous_pointer_angle, pointer_angle_dif);
+    angle_canvas += pointer_angle_dif;
+    if (angle_canvas < 0) {
+      angle_canvas = 0;
+    } else if (angle_canvas > rotation_list[rotation_list_size - 1]) {
+      angle_canvas = rotation_list[rotation_list_size - 1];
+    }
+    angle_disc += pointer_angle_dif;
+    if (angle_disc < 0) {
+      angle_disc = 0;
+    }
+    previous_pointer_angle = current_pointer_angle;
+    console.log("turn", previous_pointer_angle);
+  }
+}
+
+// マウス操作用イベントハンドラ
+document.addEventListener("mouseup", (e) => {
+  mouseup(e);
+});
+
+// タッチ操作用イベントハンドラ
+document.addEventListener("touchend", (e) => {
+  mouseup(e.changedTouches[0]);
+});
+
+// 共通処理
+const mouseup = (e) => {
+  console.log("up", e.pageX, e.pageY);
+  if (play_mode == 2) {
+    // 操作後の角度に応じて楽曲をシーク
+    let position = GetPositionByAngle(angle_canvas);
+    player.requestMediaSeek(position);
+
+    // 停止中皿回しの場合終了後停止状態
+    play_mode = 0;
+  } else if (play_mode == 3) {
+    // 操作後の角度に応じて楽曲をシーク
+    let position = GetPositionByAngle(angle_canvas);
+    player.requestMediaSeek(position);
+
+    // 再生中皿回しの場合終了後再生状態
+    player.requestPlay();
+    play_mode = 1;
+  }
+}
 
 // p5.js を初期化
 new P5((p5) => {
@@ -289,52 +420,77 @@ new P5((p5) => {
     // 筐体
     p5.imageMode(p5.CORNER);
     p5.image(img_frame, 0, 0);
-    const beat = player.findBeat(position);
-    if (beat) {
-      const progress = beat.progress(position);
-      const rectHeight = Ease.quintIn(progress) * height;
-      p5.fill(0, 0, 0, Ease.quintOut(progress) * 60);
-      p5.rect(0, rectHeight, width, height - rectHeight);
+
+    switch (play_mode) {
+    case 0:
+      // ポーズ中
+      break;
+    case 1:
+      // 再生中
+      const beat = player.findBeat(position);
+      if (beat) {
+        const progress = beat.progress(position);
+        const rectHeight = Ease.quintIn(progress) * height;
+        p5.fill(0, 0, 0, Ease.quintOut(progress) * 60);
+        p5.rect(0, rectHeight, width, height - rectHeight);
+      }
+      // 再生中はディスク回転。一定速度でそれっぽく回っていればいいのでデフォルトRPMでインクリメント
+      angle_disc += rpm_default / 60 * 360 / frame_rate;
+
+      // 次の発声文字から歌詞インデックスを取得
+      let next_char = p5.GetNextChar(position);
+      let char_index;
+      if (next_char != null) {
+        // [0]は0が入っているので+1した場所が歌詞のインデックス
+        char_index = player.video.findIndex(next_char) + 1;
+      } else {
+        // nullの場合、最後の歌詞発声終了から楽曲終了までの期間
+        char_index = rotation_list_size - 1;
+      }
+
+      // 回転角度リストを元に現在時刻における線形補完値を算出
+      let per = (position - starttime_list[char_index - 1])
+                / (starttime_list[char_index] - starttime_list[char_index - 1]);
+      angle_canvas = rotation_list[char_index - 1]
+                    + (rotation_list[char_index] - rotation_list[char_index - 1]) * per;
+      break;
+    case 2:
+      // ポーズ中皿回し
+      break;
+    case 3:
+      // 再生中皿回し
+      break;
     }
 
-    // ディスク回転
+    // 再生開始直後に再生位置が不正な場合があるので弾く
+    if (position >= player.video.duration) {
+      return;
+    }
+
+    // ディスクの描画
     p5.push();
     p5.imageMode(p5.CENTER);
-    let angle_disc = rpm_default / 60000 * 360 * position;
     p5.translate(record_pos[0], record_pos[1]);
     p5.rotate(angle_disc);
     p5.image(img_disc, 0, 0);
     p5.pop();
 
-    // 針
+    // 針の描画
     p5.push();
     p5.imageMode(p5.CORNER);
     let angle_needle = (angle_needle_min
-                        + (angle_needle_max - angle_needle_min) * position / (player.video.duration));
+                        + (angle_needle_max - angle_needle_min) * GetPositionByAngle(angle_canvas) / (player.video.duration));
     p5.translate(needle_axis_pos[0], needle_axis_pos[1]);
     p5.rotate(angle_needle);
     p5.translate(-needle_axis_pos[0], -needle_axis_pos[1]);
     p5.image(img_needle, 0, 0);
     p5.pop();
-    console.log(player.video.duration, angle_needle);
 
-    // このフレームでのキャンバス角度を決める
-    // 次の発声文字から歌詞インデックスを取得
-    let next_char = p5.GetNextChar(position);
-    let char_index = player.video.findIndex(next_char);
-
-    // 回転角度リストを元に現在時刻における線形補完値を算出
-    let per = (position - starttime_list[char_index - 1])
-              / (starttime_list[char_index] - starttime_list[char_index - 1]);
-    angle_canvas = rotation_list[char_index - 1]
-                   + (rotation_list[char_index] - rotation_list[char_index - 1]) * per;
-
-    // キャンバス回転
+    // 歌詞の描画
     p5.translate(record_pos[0], record_pos[1]);
     p5.rotate(angle_canvas);
     p5.translate(-record_pos[0], -record_pos[1]);
 
-    // 歌詞
     // - 再生位置より 100 [ms] 前の時点での発声文字を取得
     // - { loose: true } にすることで発声中でなければ一つ後ろの文字を取得
     let char = player.video.findChar(position - 10000, { loose: true });
@@ -345,8 +501,8 @@ new P5((p5) => {
 
       // 表示領域(-5°～+365°)に含まれていたら描画する
       while (char) {
-        if ((rotation_list[index] -5 <= angle_canvas) &&
-            (angle_canvas <= rotation_list[index] + 300)) {
+        if ((rotation_list[index + 1] -5 <= angle_canvas) &&
+            (angle_canvas <= rotation_list[index + 1] + 300)) {
           if (char.endTime + 10000 < position) {
             // これ以降の文字は表示する必要がない
             break;
@@ -361,30 +517,28 @@ new P5((p5) => {
               const eased = Ease.circIn(progress);
               transparency = progress;
               size = 39 * eased + Math.min(width/2, height/2) * (1 - eased);
-            } else if (rotation_list[index] + 270 <= angle_canvas) {
+            } else if (rotation_list[index + 1] + 270 <= angle_canvas) {
               // 30°かけてフェードアウトする
-              transparency = 1 - (angle_canvas - rotation_list[index] - 270) / 30;
-              console.log(transparency);
+              transparency = 1 - (angle_canvas - rotation_list[index + 1] - 270) / 30;
             } else {
               // 発声区間中は完全に不透明
               transparency = 1;
             }
             if (char_pos[index] == null) {
-              needle_pos = p5.GetNeedlePos(rotation_list[index]);
+              needle_pos = p5.GetNeedlePos(rotation_list[index + 1]);
               char_pos[index] = [needle_pos[0], needle_pos[1], needle_pos[2]];
             }
 
             p5.fill(0, 0, 100, transparency * 100);
             p5.textSize(size);
             // needle_pos = p5.GetNeedlePos(angle_canvas);
-            needle_pos = p5.GetNeedlePos(rotation_list[index]);
+            needle_pos = p5.GetNeedlePos(rotation_list[index + 1]);
             p5.push();
             p5.translate(char_pos[index][0], char_pos[index][1]);
             p5.rotate(char_pos[index][2]);
             p5.translate(-char_pos[index][0], -char_pos[index][1]);
             p5.text(char.text, char_pos[index][0], char_pos[index][1]);
 
-            // console.log(char.text, needle_pos[0], needle_pos[1], needle_pos[2]);
             p5.pop();
           }
         }
@@ -407,7 +561,6 @@ new P5((p5) => {
     radius = height / 2 - 100;
     x = radius * Math.cos(rad) + record_pos[0];
     y = radius * Math.sin(rad) + record_pos[1];
-    // console.log(x, y, deg, angle);
     return [x, y, text_area_angle_begin - deg - 90];
   }
 
@@ -451,21 +604,35 @@ new P5((p5) => {
     }
     // p5.resizeCanvas(p5.windowWidth, p5.windowHeight);
     // p5.scale(genaral_magnification);
-    button = p5.createButton("じゃんけん");
+    startstop_button = document.getElementById("startstop");
+    startstop_button.style.width = (105 * genaral_magnification) + 'px';
+    startstop_button.style.height = (105 * genaral_magnification) + 'px';
+    startstop_button.style.left = (42 * genaral_magnification) + 'px';
+    startstop_button.style.top = (871 * genaral_magnification) + 'px';
   }
 });
 
+/**
+ * @fn CreatePositionList
+ * @brief 歌詞の配置リストを作成する
+ */
 const CreatePositionList = () => {
-  let index = 0;
   let previous_char_time = 0;
   let total_rotation_deg = 0;
 
   let rotation_time;
+  let possible_rotation_deg;
+
+  // 計算に使うので[0]は0で固定
+  rotation_list[0] = 0;
+  starttime_list[0] = 0;
+  rotation_list_size++;
+
   let char = player.video.findChar(0, {loose: true}); // 最初の発声文字
   while(char != null) {
     rotation_time = char.startTime - previous_char_time; // 次の発声までの時間[ms]
 
-    let possible_rotation_deg = rotation_time * rpm_default / 60000 * 360;
+    possible_rotation_deg = rotation_time * rpm_default / 60000 * 360;
     if (possible_rotation_deg >= min_text_interval_deg) {
       // デフォルトのRPMで十分な回転が確保できている場合はそのまま表示
       total_rotation_deg += possible_rotation_deg;
@@ -473,16 +640,135 @@ const CreatePositionList = () => {
       // 文字が重なってしまう場合、規定の間隔だけずらす
       total_rotation_deg += min_text_interval_deg;
     }
-    rotation_list[index] = total_rotation_deg;
+    rotation_list[rotation_list_size] = total_rotation_deg;
 
     previous_char_time = char.startTime;
-    starttime_list[index] = char.startTime;
-
-    console.log(char.text, char.startTime);
+    starttime_list[rotation_list_size] = char.startTime;
 
     char = char.next
-    index++;
+    rotation_list_size++;
   }
+  // 最後の歌詞発声から楽曲終了までの動きを作る(この期間はchar == null)
+  rotation_time = player.video.duration - previous_char_time; // 次の発声までの時間[ms]
+  possible_rotation_deg = rotation_time * rpm_default / 60000 * 360;
+  total_rotation_deg += possible_rotation_deg;
+  rotation_list[rotation_list_size] = total_rotation_deg;
+  starttime_list[rotation_list_size] = player.video.duration;
+  rotation_list_size++;
+}
+
+/**
+ * @fn isInDisc
+ * @brief クリック/タップされた場所がディスク上かどうかを判定する
+ * @param[in] x: X座標
+ * @param[in] y: Y座標
+ * @retval true: ディスク上
+ * @retval false: ディスク上でない
+ */
+const isInDisc = (x, y) => {
+  // ウインドウ倍率1の時のレコードの中心は[550, 500]
+  let disc_center_x = 550 * genaral_magnification;
+  let disc_center_y = 500 * genaral_magnification;
+  let disc_radius = 478 * genaral_magnification;
+
+  // 入力されたX座標におけるレコードの外周のY座標を求める
+  let distance_x = Math.abs(x - disc_center_x);
+
+  if (distance_x > disc_radius) {
+    // まずX座標で円の内側にいるか判定する
+    return false;
+  }
+  // 円周上のそのX座標の角度を計算
+  let angle_rad = Math.acos(distance_x / disc_radius);
+
+  // Y座標の上限と下限を計算
+  let max_y = disc_center_y + disc_radius * Math.sin(angle_rad);
+  let min_y = disc_center_y - disc_radius * Math.sin(angle_rad);
+
+  if ((min_y <= y) &&
+       (y <= max_y)) {
+    // Y座標も範囲内にいれば円周内にいる判定
+    return true;
+  } else {
+    return false;
+  }
+}
+
+/**
+ * @fn TurnDisc
+ * @brief ドラッグ量に応じてディスクを回してシークさせる
+ * @param[in] x: X座標
+ * @param[in] y: Y座標
+ */
+const TurnDisc = (x, y) => {
+  // ウインドウ倍率1の時のレコードの中心は[550, 500]
+  let disc_center_x = 550 * genaral_magnification;
+  let disc_center_y = 500 * genaral_magnification;
+  let disc_radius = 478 * genaral_magnification;
+
+  // 入力されたX座標におけるレコードの外周のY座標を求める
+  let distance_x = Math.abs(x - disc_center_x);
+
+  if (distance_x > disc_radius) {
+    // まずX座標で円の内側にいるか判定する
+    return false;
+  }
+  // 円周上のそのX座標の角度を計算
+  let angle_rad = Math.acos(distance_x / disc_radius);
+
+  // Y座標の上限と下限を計算
+  let max_y = disc_center_y + disc_radius * Math.sin(angle_rad);
+  let min_y = disc_center_y - disc_radius * Math.sin(angle_rad);
+
+  if ((min_y <= y) &&
+       (y <= max_y)) {
+    // Y座標も範囲内にいれば円周内にいる判定
+    return true;
+  } else {
+    return false;
+  }
+}
+
+/**
+ * @fn GetAngleOnDisc
+ * @brief ポインター位置のディスク中心に対する角度[deg]を取得する
+ * @param[in] x: X座標
+ * @param[in] y: Y座標
+ * @return ポインター位置のディスク中心に対する角度[deg]
+ */
+const GetAngleOnDisc = (x, y) => {
+  // ウインドウ倍率1の時のレコードの中心は[550, 500]
+  let disc_center_x = 550 * genaral_magnification;
+  let disc_center_y = 500 * genaral_magnification;
+
+  // 入力されたX座標におけるレコードの外周のY座標を求める
+  let distance_x = x - disc_center_x;
+  let distance_y = y - disc_center_y;
+
+  // ディスク中心に対する角度を計算
+  let angle_rad = Math.atan2(distance_x, distance_y);
+  let angle_deg = Rad2Deg(angle_rad);
+  return angle_deg;
+}
+
+/**
+ * @fn GetPositionByAngle
+ * @brief 入力角度に対応した再生時間を取得する
+ * @param[in] angle: 角度[deg]
+ * @return 再生時間[ms]
+ */
+const GetPositionByAngle = (angle) => {
+  let i;
+  for (i = 0; i < rotation_list_size; i++) {
+    if (angle < rotation_list[i]) {
+      break;
+    }
+  }
+  let progress = (angle - rotation_list[i - 1])
+                 / (rotation_list[i] - rotation_list[i - 1]);
+  let position = starttime_list[i - 1]
+                 + (starttime_list[i] - starttime_list[i - 1]) * progress;
+  return position;
 }
 
 const Deg2Rad = (deg) => {
