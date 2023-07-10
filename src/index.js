@@ -50,6 +50,27 @@ const angle_needle_min = 16.5;
  */
 const angle_needle_max = 38;
 
+let p5js_canvas = document.getElementById('p5js');
+
+/**
+ * 楽曲選択
+ * -1: 未選択
+ * 0 : king妃jack躍 / 宮守文学 feat. 初音ミク
+ * 1 : 生きること / nogumi feat. 初音ミク
+ * 2 : 唱明者 / すこやか大聖堂 feat. KAITO
+ * 3 : ネオンライトの海を往く / Ponchi♪ feat. 初音ミク
+ * 4 : ミュウテイション / Rin（Kuroneko Lounge） feat. 初音ミク
+ * 5 : Entrust via 39 / ikomai feat. 初音ミク
+ */
+let song_id = -1;
+
+/**
+ * シーンのモードの定義
+ * 0: 楽曲選択画面
+ * 1: 楽曲再生画面
+ */
+let scene_mode = 0;
+
 /**
  * アプリ全体の拡大率
  */
@@ -129,101 +150,8 @@ const player = new Player({
 
 // リスナの登録 / Register listeners
 player.addListener({
-  onAppReady: (app) => {
-    if (!app.managed) {
-      // king妃jack躍 / 宮守文学 feat. 初音ミク
-      player.createFromSongUrl("https://piapro.jp/t/ucgN/20230110005414", {
-        video: {
-          // 音楽地図訂正履歴: https://songle.jp/songs/2427948/history
-          beatId: 4267297,
-          chordId: 2405019,
-          repetitiveSegmentId: 2475577 /* 2023/5/6 更新 */,
-          // 歌詞タイミング訂正履歴: https://textalive.jp/lyrics/piapro.jp%2Ft%2FucgN%2F20230110005414
-          lyricId: 56092,
-          lyricDiffId: 9636
-        },
-      });
-
-      // 生きること / nogumi feat. 初音ミク
-      // player.createFromSongUrl("https://piapro.jp/t/fnhJ/20230131212038", {
-      //   video: {
-      //     // 音楽地図訂正履歴: https://songle.jp/songs/2427949/history
-      //     beatId: 4267300,
-      //     chordId: 2405033,
-      //     repetitiveSegmentId: 2475606,
-      //     // 歌詞タイミング訂正履歴: https://textalive.jp/lyrics/piapro.jp%2Ft%2FfnhJ%2F20230131212038
-      //     lyricId: 56131,
-      //     lyricDiffId: 9638
-      //   },
-      // });
-
-      // 唱明者 / すこやか大聖堂 feat. KAITO
-      // player.createFromSongUrl("https://piapro.jp/t/Vfrl/20230120182855", {
-      //   video: {
-      //     // 音楽地図訂正履歴: https://songle.jp/songs/2427950/history
-      //     beatId: 4267334,
-      //     chordId: 2405059,
-      //     repetitiveSegmentId: 2475645,
-      //     // 歌詞タイミング訂正履歴: https://textalive.jp/lyrics/piapro.jp%2Ft%2FVfrl%2F20230120182855
-      //     lyricId: 56095,
-      //     lyricDiffId: 9637
-      //   },
-      // });
-
-      // ネオンライトの海を往く / Ponchi♪ feat. 初音ミク
-      // player.createFromSongUrl("https://piapro.jp/t/fyxI/20230203003935", {
-      //   video: {
-      //     // 音楽地図訂正履歴: https://songle.jp/songs/2427951/history
-      //     beatId: 4267373,
-      //     chordId: 2405138,
-      //     repetitiveSegmentId: 2475664,
-      //     // 歌詞タイミング訂正履歴: https://textalive.jp/lyrics/piapro.jp%2Ft%2FfyxI%2F20230203003935
-      //     lyricId: 56096,
-      //     lyricDiffId: 9639
-      //   },
-      // });
-
-      // ミュウテイション / Rin（Kuroneko Lounge） feat. 初音ミク
-      // player.createFromSongUrl("https://piapro.jp/t/Wk83/20230203141007", {
-      //   video: {
-      //     // 音楽地図訂正履歴: https://songle.jp/songs/2427952/history
-      //     beatId: 4267381,
-      //     chordId: 2405285,
-      //     repetitiveSegmentId: 2475676,
-      //     // 歌詞タイミング訂正履歴: https://textalive.jp/lyrics/piapro.jp%2Ft%2FWk83%2F20230203141007
-      //     lyricId: 56812 /* 6月27日更新 */,
-      //     lyricDiffId: 10668 /* 6月27日更新 */
-      //   },
-      // });
-
-      // Entrust via 39 / ikomai feat. 初音ミク
-      // player.createFromSongUrl("https://piapro.jp/t/Ya0_/20230201235034", {
-      //   video: {
-      //     // 音楽地図訂正履歴: https://songle.jp/songs/2427953/history
-      //     beatId: 4269734,
-      //     chordId: 2405723,
-      //     repetitiveSegmentId: 2475686,
-      //     // 歌詞タイミング訂正履歴: https://textalive.jp/lyrics/piapro.jp%2Ft%2FYa0_%2F20230201235034
-      //     lyricId: 56098,
-      //     lyricDiffId: 9643
-      //   },
-      // });
-
-      // player.createFromSongUrl("https://piapro.jp/t/FDb1/20210213190029", {
-      //   video: {
-      //     // 音楽地図訂正履歴: https://songle.jp/songs/2121525/history
-      //     beatId: 3953882,
-      //     repetitiveSegmentId: 2099561,
-      //     // 歌詞タイミング訂正履歴: https://textalive.jp/lyrics/piapro.jp%2Ft%2FFDb1%2F20210213190029
-      //     lyricId: 52065,
-      //     lyricDiffId: 5093,
-      //   },
-      // });
-
-      document.querySelector("#control").className = "active";
-    } else {
-      document.querySelector("#control").className = "inactive";
-    }
+  onAppReady: () => {
+    console.log("onAppReady");
   },
 
   onTextLoad: (body) => {
@@ -235,7 +163,7 @@ player.addListener({
   onVideoReady: () => {
     console.log("player.onVideoReady");
     CreatePositionList();
-    document.querySelector("#overlay").className = "inactive";
+    // document.querySelector("#overlay").className = "inactive";
   },
 
   onPlay: () => {
@@ -255,6 +183,130 @@ player.addListener({
   },
 });
 
+// 楽曲選択ボタン
+document.querySelector("#song_0").addEventListener("click", () => {
+  StartPlayer(0);
+});
+
+document.querySelector("#song_1").addEventListener("click", () => {
+  StartPlayer(1);
+});
+
+document.querySelector("#song_2").addEventListener("click", () => {
+  StartPlayer(2);
+});
+
+document.querySelector("#song_3").addEventListener("click", () => {
+  StartPlayer(3);
+});
+
+document.querySelector("#song_4").addEventListener("click", () => {
+  StartPlayer(4);
+});
+
+document.querySelector("#song_5").addEventListener("click", () => {
+  StartPlayer(5);
+});
+
+/**
+ * @fn StartPlayer
+ * @brief 楽曲IDを指定してプレイヤーを表示する
+ * @param[in] song_id: 楽曲ID
+ */
+const StartPlayer = (song_id) => {
+  switch (song_id) {
+  case 0:
+    // king妃jack躍 / 宮守文学 feat. 初音ミク
+    player.createFromSongUrl("https://piapro.jp/t/ucgN/20230110005414", {
+      video: {
+        // 音楽地図訂正履歴: https://songle.jp/songs/2427948/history
+        beatId: 4267297,
+        chordId: 2405019,
+        repetitiveSegmentId: 2475577 /* 2023/5/6 更新 */,
+        // 歌詞タイミング訂正履歴: https://textalive.jp/lyrics/piapro.jp%2Ft%2FucgN%2F20230110005414
+        lyricId: 56092,
+        lyricDiffId: 9636
+      },
+    });
+    break;
+  case 1:
+    // 生きること / nogumi feat. 初音ミク
+    player.createFromSongUrl("https://piapro.jp/t/fnhJ/20230131212038", {
+      video: {
+        // 音楽地図訂正履歴: https://songle.jp/songs/2427949/history
+        beatId: 4267300,
+        chordId: 2405033,
+        repetitiveSegmentId: 2475606,
+        // 歌詞タイミング訂正履歴: https://textalive.jp/lyrics/piapro.jp%2Ft%2FfnhJ%2F20230131212038
+        lyricId: 56131,
+        lyricDiffId: 9638
+      },
+    });
+    break;
+  case 2:
+    // 唱明者 / すこやか大聖堂 feat. KAITO
+    player.createFromSongUrl("https://piapro.jp/t/Vfrl/20230120182855", {
+      video: {
+        // 音楽地図訂正履歴: https://songle.jp/songs/2427950/history
+        beatId: 4267334,
+        chordId: 2405059,
+        repetitiveSegmentId: 2475645,
+        // 歌詞タイミング訂正履歴: https://textalive.jp/lyrics/piapro.jp%2Ft%2FVfrl%2F20230120182855
+        lyricId: 56095,
+        lyricDiffId: 9637
+      },
+    });
+    break;
+  case 3:
+    // ネオンライトの海を往く / Ponchi♪ feat. 初音ミク
+    player.createFromSongUrl("https://piapro.jp/t/fyxI/20230203003935", {
+      video: {
+        // 音楽地図訂正履歴: https://songle.jp/songs/2427951/history
+        beatId: 4267373,
+        chordId: 2405138,
+        repetitiveSegmentId: 2475664,
+        // 歌詞タイミング訂正履歴: https://textalive.jp/lyrics/piapro.jp%2Ft%2FfyxI%2F20230203003935
+        lyricId: 56096,
+        lyricDiffId: 9639
+      },
+    });
+    break;
+  case 4:
+    // ミュウテイション / Rin（Kuroneko Lounge） feat. 初音ミク
+    player.createFromSongUrl("https://piapro.jp/t/Wk83/20230203141007", {
+      video: {
+        // 音楽地図訂正履歴: https://songle.jp/songs/2427952/history
+        beatId: 4267381,
+        chordId: 2405285,
+        repetitiveSegmentId: 2475676,
+        // 歌詞タイミング訂正履歴: https://textalive.jp/lyrics/piapro.jp%2Ft%2FWk83%2F20230203141007
+        lyricId: 56812 /* 6月27日更新 */,
+        lyricDiffId: 10668 /* 6月27日更新 */
+      },
+    });
+    break;
+  case 5:
+    // Entrust via 39 / ikomai feat. 初音ミク
+    player.createFromSongUrl("https://piapro.jp/t/Ya0_/20230201235034", {
+      video: {
+        // 音楽地図訂正履歴: https://songle.jp/songs/2427953/history
+        beatId: 4269734,
+        chordId: 2405723,
+        repetitiveSegmentId: 2475686,
+        // 歌詞タイミング訂正履歴: https://textalive.jp/lyrics/piapro.jp%2Ft%2FYa0_%2F20230201235034
+        lyricId: 56098,
+        lyricDiffId: 9643
+      },
+    });
+    break;
+  default:
+    break;
+  }
+  document.getElementById('song_select').style.display = "none";
+  document.getElementById('startstop').style.display = "block";
+  document.getElementById('p5js').style.display = "flex";
+}
+
 // START/STOPボタン
 document.querySelector("#startstop").addEventListener("click", () => {
   switch (play_mode) {
@@ -271,14 +323,14 @@ document.querySelector("#startstop").addEventListener("click", () => {
   }
 });
 
-// 皿回し処理
+// 皿回し開始処理
 // マウス操作用イベントハンドラ
-document.addEventListener("mousedown", (e) => {
+document.querySelector("#p5js").addEventListener("mousedown", (e) => {
   mousedown(e);
 });
 
 // タッチ操作用イベントハンドラ
-document.addEventListener("touchstart", (e) => {
+document.querySelector("#p5js").addEventListener("touchstart", (e) => {
   mousedown(e.changedTouches[0]);
 });
 
@@ -301,13 +353,14 @@ const mousedown = (e) => {
   }
 }
 
+// 皿回し回転処理
 // マウス操作用イベントハンドラ
-document.addEventListener("mousemove", (e) => {
+document.querySelector("#p5js").addEventListener("mousemove", (e) => {
   mousemove(e);
 });
 
 // タッチ操作用イベントハンドラ
-document.addEventListener("touchmove", (e) => {
+document.querySelector("#p5js").addEventListener("touchmove", (e) => {
   mousemove(e.changedTouches[0]);
 });
 
@@ -342,13 +395,14 @@ const mousemove = (e) => {
   }
 }
 
+// 皿回し終了処理
 // マウス操作用イベントハンドラ
-document.addEventListener("mouseup", (e) => {
+document.querySelector("#p5js").addEventListener("mouseup", (e) => {
   mouseup(e);
 });
 
 // タッチ操作用イベントハンドラ
-document.addEventListener("touchend", (e) => {
+document.querySelector("#p5js").addEventListener("touchend", (e) => {
   mouseup(e.changedTouches[0]);
 });
 
@@ -391,7 +445,8 @@ new P5((p5) => {
 
   // キャンバスを作成
   p5.setup = () => {
-    p5.createCanvas(p5.windowWidth, p5.windowHeight);
+    let canvas = p5.createCanvas(p5.windowWidth, p5.windowHeight);
+    canvas.parent(p5js_canvas);
     p5.ResizeWindow();
     p5.translate(width / 2, height / 2);
     p5.colorMode(p5.HSB, 100);
@@ -401,6 +456,11 @@ new P5((p5) => {
     p5.noStroke();
     p5.textFont("Noto Sans JP");
     p5.textAlign(p5.CENTER, p5.CENTER);
+    player.volume = 20;
+
+    // キャンバス作成時には楽曲選択画面
+    document.getElementById('p5js').style.display = "none";
+    document.getElementById('startstop').style.display = "none";
   };
 
   // ビートにあわせて背景を、発声にあわせて歌詞を表示
@@ -415,7 +475,6 @@ new P5((p5) => {
     p5.resizeCanvas(p5.windowWidth, p5.windowHeight);
     p5.scale(genaral_magnification);
 
-    player.volume = 20;
 
     // 筐体
     p5.imageMode(p5.CORNER);
@@ -695,41 +754,6 @@ const isInDisc = (x, y) => {
 }
 
 /**
- * @fn TurnDisc
- * @brief ドラッグ量に応じてディスクを回してシークさせる
- * @param[in] x: X座標
- * @param[in] y: Y座標
- */
-const TurnDisc = (x, y) => {
-  // ウインドウ倍率1の時のレコードの中心は[550, 500]
-  let disc_center_x = 550 * genaral_magnification;
-  let disc_center_y = 500 * genaral_magnification;
-  let disc_radius = 478 * genaral_magnification;
-
-  // 入力されたX座標におけるレコードの外周のY座標を求める
-  let distance_x = Math.abs(x - disc_center_x);
-
-  if (distance_x > disc_radius) {
-    // まずX座標で円の内側にいるか判定する
-    return false;
-  }
-  // 円周上のそのX座標の角度を計算
-  let angle_rad = Math.acos(distance_x / disc_radius);
-
-  // Y座標の上限と下限を計算
-  let max_y = disc_center_y + disc_radius * Math.sin(angle_rad);
-  let min_y = disc_center_y - disc_radius * Math.sin(angle_rad);
-
-  if ((min_y <= y) &&
-       (y <= max_y)) {
-    // Y座標も範囲内にいれば円周内にいる判定
-    return true;
-  } else {
-    return false;
-  }
-}
-
-/**
  * @fn GetAngleOnDisc
  * @brief ポインター位置のディスク中心に対する角度[deg]を取得する
  * @param[in] x: X座標
@@ -771,11 +795,23 @@ const GetPositionByAngle = (angle) => {
   return position;
 }
 
+/**
+ * @fn Deg2Rad
+ * @brief Deg -> Radの変換を行う
+ * @param[in] deg: 角度[deg]
+ * @return 角度[rad]
+ */
 const Deg2Rad = (deg) => {
   let rad = deg / 180 * Math.PI;
   return rad;
 }
 
+/**
+ * @fn Rad2Deg
+ * @brief Rad -> Degの変換を行う
+ * @param[in] rad: 角度[rad]
+ * @return 角度[deg]
+ */
 const Rad2Deg = (rad) => {
   let deg = rad / Math.PI * 180;
   return deg;

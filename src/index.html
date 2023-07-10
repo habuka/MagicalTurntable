@@ -7,14 +7,24 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@900" rel="stylesheet">
   </head>
   <body>
-    <div id="overlay"><strong>⌛ 読み込み中 ⌛</strong></div>
-    <div id="media"></div>
-    <div id="wrapper">
-      <div id="control" class="inactive">
+    <!-- <div id="overlay"><strong>⌛ 読み込み中 ⌛</strong></div> -->
+    <div id="song_select">
+      Select song
+      <button class="song_btn" id="song_0">king妃jack躍</button>
+      <button class="song_btn" id="song_1">生きること</button>
+      <button class="song_btn" id="song_2">唱明者</button>
+      <button class="song_btn" id="song_3">ネオンライトの海を往く</button>
+      <button class="song_btn" id="song_4">ミュウテイション</button>
+      <button class="song_btn" id="song_5">Entrust</button>
+    </div>
+    <div id="player">
+      <div id="media"></div>
+      <div id="wrapper">
         <button id="startstop"></button>
       </div>
+      <div id="dummy"></div>
+      <div id="p5js"></div>
     </div>
-    <div id="dummy"></div>
     <script src="./index.js"></script>
   </body>
 </html>

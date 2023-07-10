@@ -1,4 +1,4 @@
-main {
+#p5js {
   position: absolute;
   top: 0;
   right: 0;
@@ -8,12 +8,9 @@ main {
   height: 100%;
   display: flex;
   align-items: center;
+  margin: auto;
   background: rgba(0, 0, 0, 0.2);
   z-index: 100;
-}
-
-canvas {
-  margin: auto;
 }
 
 #media {
@@ -21,23 +18,6 @@ canvas {
   right: 5px;
   bottom: 5px;
   z-index: 200;
-}
-
-#overlay {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  background: rgba(0,0,0,0.7);
-  color: rgba(255,255,255);
-  display: flex;
-  align-items: center;
-  z-index: 300;
-}
-
-#overlay > * {
-  margin: auto;
 }
 
 #wrapper {
@@ -52,10 +32,6 @@ canvas {
   display: none;
 }
 
-#control {
-  display: none;
-}
-
 #dummy {
   opacity: 0;
 }
@@ -67,6 +43,28 @@ canvas {
   background: transparent;
   /* border: none; */
   z-index: 201;
+}
+
+/* ローディング画面 */
+#song_select {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  margin: auto;
+  transition: all 1s;
+  background: rgba(0, 0, 0, 0.2);
+  z-index: 100;
+}
+
+.song_btn {
+  width: 105px;
+  height: 105px;
 }
 
 .inactive {
