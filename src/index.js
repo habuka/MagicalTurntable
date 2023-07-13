@@ -39,6 +39,54 @@ const text_area_angle_end = 300
 const min_text_interval_deg = 7.2;
 
 /**
+ * レコードの中心座標[x, y]
+ * キャンバス倍率1の時の値
+ */
+const record_pos_default = [522, 500];
+
+/**
+ * レコード針の回転軸座標[x, y]
+ * キャンバス倍率1の時の値
+ */
+const needle_axis_pos_default = [1087, 244];
+
+/**
+ * レコードの半径[px]
+ * キャンバス倍率1の時の値
+ */
+const disc_radius_default = 478;
+
+/**
+ * レコード針の位置(歌詞出現場所)のレコード中心からの距離[px]
+ * キャンバス倍率1の時の値
+ */
+const needle_radius_default = 400;
+
+/**
+ * START/STOPボタンの位置[left, top[px]]
+ * キャンバス倍率1の時の値
+ */
+const startstop_button_pos_default = [42, 871];
+
+/**
+ * BACKボタンの位置[left, top[px]]
+ * キャンバス倍率1の時の値
+ */
+const back_button_pos_default = [30, 753];
+
+/**
+ * START/STOPボタンのサイズ[width, height[px]]
+ * キャンバス倍率1の時の値
+ */
+const startstop_button_size_default = [105, 105];
+
+/**
+ * BACKボタンのサイズ[width, height[px]]
+ * キャンバス倍率1の時の値
+ */
+const back_button_size_default = [85, 85];
+
+/**
  * レコード針の回転角度の下限値[deg]
  * 曲の初めはこの位置
  */
@@ -76,14 +124,6 @@ let scene_mode = 0;
  */
 let genaral_magnification = 0;
 
-
-let needle_pos;
-
-/**
- *
- */
-let start_or_stop = 0;
-
 /**
  * 歌詞ごとのキャンバス上の位置と角度{X座標, Y座標, 角度}
  * キャンバスの回転を加味した角度
@@ -120,16 +160,6 @@ let play_mode = 0;
  * 直前の皿回し処理におけるポインター位置のディスク上の見かけの角度
  */
 let previous_pointer_angle = 0;
-
-/**
- * レコードの中心座標
- */
-let record_pos = [];
-
-/**
- * 針の回転軸座標
- */
-let needle_axis_pos = [];
 
 /**
  * キャンバス自体の回転角度
@@ -209,11 +239,25 @@ document.querySelector("#song_5").addEventListener("click", () => {
 });
 
 /**
+ * @fn InitPlayer
+ * @brief プレイヤー関連のパラメータを初期化する(楽曲再選択時等に必要)
+ */
+const InitPlayer = () => {
+  song_id = -1;
+  rotation_list_size = 0;
+  play_mode = 0;
+  previous_pointer_angle = 0;
+  angle_canvas = 0;
+  angle_disc = 0;
+}
+
+/**
  * @fn StartPlayer
  * @brief 楽曲IDを指定してプレイヤーを表示する
  * @param[in] song_id: 楽曲ID
  */
 const StartPlayer = (song_id) => {
+  InitPlayer();
   switch (song_id) {
   case 0:
     // king妃jack躍 / 宮守文学 feat. 初音ミク
@@ -304,6 +348,7 @@ const StartPlayer = (song_id) => {
   }
   document.getElementById('song_select').style.display = "none";
   document.getElementById('startstop').style.display = "block";
+  document.getElementById('back').style.display = "block";
   document.getElementById('p5js').style.display = "flex";
 }
 
@@ -311,6 +356,9 @@ const StartPlayer = (song_id) => {
 document.querySelector("#startstop").addEventListener("click", () => {
   switch (play_mode) {
   case 0:
+    // そのまま再生するとPositionが変な値になっていることがあるので現在の再生時間に明示的にシークしてから再生開始
+    let position = GetPositionByAngle(angle_canvas);
+    player.requestMediaSeek(position);
     player.requestPlay();
     play_mode = 1;
     break;
@@ -321,6 +369,15 @@ document.querySelector("#startstop").addEventListener("click", () => {
   default:
     break;
   }
+});
+
+// BACKボタン
+document.querySelector("#back").addEventListener("click", () => {
+  player.requestStop();
+  document.getElementById('p5js').style.display = "none";
+  document.getElementById('startstop').style.display = "none";
+  document.getElementById('back').style.display = "none";
+  document.getElementById('song_select').style.display = "block";
 });
 
 // 皿回し開始処理
@@ -336,11 +393,8 @@ document.querySelector("#p5js").addEventListener("touchstart", (e) => {
 
 // 共通処理
 const mousedown = (e) => {
-  console.log("down", e.pageX, e.pageY);
   if (isInDisc(e.pageX, e.pageY)) {
     // ディスクがクリックされたら皿回しモードに入る
-    console.log("indisc!!!!");
-
     // この時点でのポインタ角度を記録
     previous_pointer_angle = GetAngleOnDisc(e.pageX, e.pageY);
     if (play_mode == 0) {
@@ -366,7 +420,6 @@ document.querySelector("#p5js").addEventListener("touchmove", (e) => {
 
 // 共通処理
 const mousemove = (e) => {
-  // console.log("move", e.pageX, e.pageY);
   if (play_mode >= 2) {
     // 皿回しモード中の場合、皿回し処理を行う
     // TurnDisc(e.pageX, e.pageY);
@@ -379,7 +432,6 @@ const mousemove = (e) => {
     } else if (pointer_angle_dif < -180) {
       pointer_angle_dif += 360;
     }
-    console.log(current_pointer_angle, previous_pointer_angle, pointer_angle_dif);
     angle_canvas += pointer_angle_dif;
     if (angle_canvas < 0) {
       angle_canvas = 0;
@@ -391,7 +443,6 @@ const mousemove = (e) => {
       angle_disc = 0;
     }
     previous_pointer_angle = current_pointer_angle;
-    console.log("turn", previous_pointer_angle);
   }
 }
 
@@ -408,7 +459,6 @@ document.querySelector("#p5js").addEventListener("touchend", (e) => {
 
 // 共通処理
 const mouseup = (e) => {
-  console.log("up", e.pageX, e.pageY);
   if (play_mode == 2) {
     // 操作後の角度に応じて楽曲をシーク
     let position = GetPositionByAngle(angle_canvas);
@@ -433,15 +483,13 @@ new P5((p5) => {
   const width = default_width;
   const height = default_height;
   const frame_rate = 30;
-  record_pos = [width / 2 - 100, height / 2];
-  needle_axis_pos = [1087, 244];
 
   p5.preload = () => {
     // 画像を読み込む
     img_disc = p5.loadImage("../img/disc.png"); // ディスク
     img_needle = p5.loadImage("../img/needle.png"); // 針
     img_frame = p5.loadImage("../img/frame.png"); // フレーム
-  }
+  };
 
   // キャンバスを作成
   p5.setup = () => {
@@ -456,11 +504,12 @@ new P5((p5) => {
     p5.noStroke();
     p5.textFont("Noto Sans JP");
     p5.textAlign(p5.CENTER, p5.CENTER);
-    player.volume = 20;
+    player.volume = 20; // 100だと大きすぎるので調整
 
     // キャンバス作成時には楽曲選択画面
     document.getElementById('p5js').style.display = "none";
     document.getElementById('startstop').style.display = "none";
+    document.getElementById('back').style.display = "none";
   };
 
   // ビートにあわせて背景を、発声にあわせて歌詞を表示
@@ -475,7 +524,6 @@ new P5((p5) => {
     p5.resizeCanvas(p5.windowWidth, p5.windowHeight);
     p5.scale(genaral_magnification);
 
-
     // 筐体
     p5.imageMode(p5.CORNER);
     p5.image(img_frame, 0, 0);
@@ -486,13 +534,13 @@ new P5((p5) => {
       break;
     case 1:
       // 再生中
-      const beat = player.findBeat(position);
-      if (beat) {
-        const progress = beat.progress(position);
-        const rectHeight = Ease.quintIn(progress) * height;
-        p5.fill(0, 0, 0, Ease.quintOut(progress) * 60);
-        p5.rect(0, rectHeight, width, height - rectHeight);
-      }
+      // const beat = player.findBeat(position);
+      // if (beat) {
+      //   const progress = beat.progress(position);
+      //   const rectHeight = Ease.quintIn(progress) * height;
+      //   p5.fill(0, 0, 0, Ease.quintOut(progress) * 60);
+      //   p5.rect(0, rectHeight, width, height - rectHeight);
+      // }
       // 再生中はディスク回転。一定速度でそれっぽく回っていればいいのでデフォルトRPMでインクリメント
       angle_disc += rpm_default / 60 * 360 / frame_rate;
 
@@ -529,9 +577,50 @@ new P5((p5) => {
     // ディスクの描画
     p5.push();
     p5.imageMode(p5.CENTER);
-    p5.translate(record_pos[0], record_pos[1]);
+    p5.translate(record_pos_default[0], record_pos_default[1]);
     p5.rotate(angle_disc);
     p5.image(img_disc, 0, 0);
+    p5.pop();
+
+
+    // 歌詞の描画
+    p5.push();
+    p5.translate(record_pos_default[0], record_pos_default[1]);
+    p5.rotate(angle_canvas);
+    p5.translate(-record_pos_default[0], -record_pos_default[1]);
+
+    // このフレームで描画する文字を決める
+    for (let i = 0; i < rotation_list_size - 2; i++) {
+      if (angle_canvas <= (rotation_list[i + 1] + 300)) {
+        if ((rotation_list[i + 1] - 5) <= angle_canvas) {
+          let char = player.video.getChar(i);
+          let transparency;
+          let size = 39;
+
+          if (angle_canvas <= (rotation_list[i + 1] + 5)) {
+            // 10°かけてフェードインする
+            transparency = 1 - ((rotation_list[i + 1] + 5) - angle_canvas) / 10;
+          } else if (rotation_list[i + 1] + 270 <= angle_canvas) {
+            // 30°かけてフェードアウトする
+            transparency = 1 - (angle_canvas - (rotation_list[i + 1] + 270)) / 30;
+          } else {
+            // それ以外の区間は完全に不透明
+            transparency = 1;
+          }
+
+          p5.fill(0, 0, 100, transparency * 100);
+          p5.textSize(size);
+          p5.push();
+          p5.translate(char_pos[i][0], char_pos[i][1]);
+          p5.rotate(char_pos[i][2]);
+          p5.translate(-char_pos[i][0], -char_pos[i][1]);
+          p5.text(char.text, char_pos[i][0], char_pos[i][1]);
+          p5.pop();
+        } else {
+          break;
+        }
+      }
+    }
     p5.pop();
 
     // 針の描画
@@ -539,89 +628,16 @@ new P5((p5) => {
     p5.imageMode(p5.CORNER);
     let angle_needle = (angle_needle_min
                         + (angle_needle_max - angle_needle_min) * GetPositionByAngle(angle_canvas) / (player.video.duration));
-    p5.translate(needle_axis_pos[0], needle_axis_pos[1]);
+    p5.translate(needle_axis_pos_default[0], needle_axis_pos_default[1]);
     p5.rotate(angle_needle);
-    p5.translate(-needle_axis_pos[0], -needle_axis_pos[1]);
+    p5.translate(-needle_axis_pos_default[0], -needle_axis_pos_default[1]);
     p5.image(img_needle, 0, 0);
     p5.pop();
-
-    // 歌詞の描画
-    p5.translate(record_pos[0], record_pos[1]);
-    p5.rotate(angle_canvas);
-    p5.translate(-record_pos[0], -record_pos[1]);
-
-    // - 再生位置より 100 [ms] 前の時点での発声文字を取得
-    // - { loose: true } にすることで発声中でなければ一つ後ろの文字を取得
-    let char = player.video.findChar(position - 10000, { loose: true });
-
-    if (char) {
-      // 位置決めのため、文字が歌詞全体で何番目かも取得しておく
-      let index = player.video.findIndex(char);
-
-      // 表示領域(-5°～+365°)に含まれていたら描画する
-      while (char) {
-        if ((rotation_list[index + 1] -5 <= angle_canvas) &&
-            (angle_canvas <= rotation_list[index + 1] + 300)) {
-          if (char.endTime + 10000 < position) {
-            // これ以降の文字は表示する必要がない
-            break;
-          }
-          if (char.startTime < position + 100) {
-            let transparency;
-            let size = 39;
-
-            // 100 [ms] かけてフェードインしてくる
-            if (position < char.startTime) {
-              const progress = 1 - (char.startTime - position) / 100;
-              const eased = Ease.circIn(progress);
-              transparency = progress;
-              size = 39 * eased + Math.min(width/2, height/2) * (1 - eased);
-            } else if (rotation_list[index + 1] + 270 <= angle_canvas) {
-              // 30°かけてフェードアウトする
-              transparency = 1 - (angle_canvas - rotation_list[index + 1] - 270) / 30;
-            } else {
-              // 発声区間中は完全に不透明
-              transparency = 1;
-            }
-            if (char_pos[index] == null) {
-              needle_pos = p5.GetNeedlePos(rotation_list[index + 1]);
-              char_pos[index] = [needle_pos[0], needle_pos[1], needle_pos[2]];
-            }
-
-            p5.fill(0, 0, 100, transparency * 100);
-            p5.textSize(size);
-            // needle_pos = p5.GetNeedlePos(angle_canvas);
-            needle_pos = p5.GetNeedlePos(rotation_list[index + 1]);
-            p5.push();
-            p5.translate(char_pos[index][0], char_pos[index][1]);
-            p5.rotate(char_pos[index][2]);
-            p5.translate(-char_pos[index][0], -char_pos[index][1]);
-            p5.text(char.text, char_pos[index][0], char_pos[index][1]);
-
-            p5.pop();
-          }
-        }
-        char = char.next;
-        index++;
-      }
-    }
   };
 
-/**
- * @fn GetNeedlePos
- * @brief キャンバスの回転を考慮したレコード針の場所(歌詞が出る場所)を取得する
- * @param[in] angle: 現在のキャンバスの回転角度[deg]
- * @retval x: レコード針のX座標
- * @retval y: レコード針のX座標
- * @retval deg: 文字の回転角度
- */
-  p5.GetNeedlePos = (deg) => {
-    rad = Deg2Rad(text_area_angle_begin - deg); // 初期値を真下方向に
-    radius = height / 2 - 100;
-    x = radius * Math.cos(rad) + record_pos[0];
-    y = radius * Math.sin(rad) + record_pos[1];
-    return [x, y, text_area_angle_begin - deg - 90];
-  }
+  p5.windowResized = () => {
+    p5.ResizeWindow();
+  };
 
 /**
  * @fn GetNextChar
@@ -637,11 +653,7 @@ new P5((p5) => {
       next_char = next_char.next;
     }
     return next_char;
-  }
-
-  p5.windowResized = () => {
-    p5.ResizeWindow();
-  }
+  };
 
 /**
  * @fn ResizeWindow
@@ -664,11 +676,17 @@ new P5((p5) => {
     // p5.resizeCanvas(p5.windowWidth, p5.windowHeight);
     // p5.scale(genaral_magnification);
     startstop_button = document.getElementById("startstop");
-    startstop_button.style.width = (105 * genaral_magnification) + 'px';
-    startstop_button.style.height = (105 * genaral_magnification) + 'px';
-    startstop_button.style.left = (42 * genaral_magnification) + 'px';
-    startstop_button.style.top = (871 * genaral_magnification) + 'px';
-  }
+    startstop_button.style.width = (startstop_button_size_default[0] * genaral_magnification) + 'px';
+    startstop_button.style.height = (startstop_button_size_default[1] * genaral_magnification) + 'px';
+    startstop_button.style.left = (startstop_button_pos_default[0] * genaral_magnification) + 'px';
+    startstop_button.style.top = (startstop_button_pos_default[1] * genaral_magnification) + 'px';
+
+    back_button = document.getElementById("back");
+    back_button.style.width = (back_button_size_default[0] * genaral_magnification) + 'px';
+    back_button.style.height = (back_button_size_default[1] * genaral_magnification) + 'px';
+    back_button.style.left = (back_button_pos_default[0] * genaral_magnification) + 'px';
+    back_button.style.top = (back_button_pos_default[1] * genaral_magnification) + 'px';
+  };
 });
 
 /**
@@ -681,6 +699,7 @@ const CreatePositionList = () => {
 
   let rotation_time;
   let possible_rotation_deg;
+  let char_pos_temp;
 
   // 計算に使うので[0]は0で固定
   rotation_list[0] = 0;
@@ -700,6 +719,8 @@ const CreatePositionList = () => {
       total_rotation_deg += min_text_interval_deg;
     }
     rotation_list[rotation_list_size] = total_rotation_deg;
+    char_pos_temp = GetNeedlePos(total_rotation_deg);
+    char_pos[rotation_list_size - 1] = [char_pos_temp[0], char_pos_temp[1], char_pos_temp[2]];
 
     previous_char_time = char.startTime;
     starttime_list[rotation_list_size] = char.startTime;
@@ -717,6 +738,22 @@ const CreatePositionList = () => {
 }
 
 /**
+ * @fn GetNeedlePos
+ * @brief キャンバスの回転を考慮したレコード針の場所(歌詞が出る場所)を取得する
+ * @param[in] angle: 現在のキャンバスの回転角度[deg]
+ * @retval x: レコード針のX座標
+ * @retval y: レコード針のX座標
+ * @retval deg: 文字の回転角度
+ */
+const GetNeedlePos = (deg) => {
+  rad = Deg2Rad(text_area_angle_begin - deg); // 初期値を真下方向に
+  radius = needle_radius_default;
+  x = radius * Math.cos(rad) + record_pos_default[0];
+  y = radius * Math.sin(rad) + record_pos_default[1];
+  return [x, y, text_area_angle_begin - deg - 90];
+}
+
+/**
  * @fn isInDisc
  * @brief クリック/タップされた場所がディスク上かどうかを判定する
  * @param[in] x: X座標
@@ -726,9 +763,9 @@ const CreatePositionList = () => {
  */
 const isInDisc = (x, y) => {
   // ウインドウ倍率1の時のレコードの中心は[550, 500]
-  let disc_center_x = 550 * genaral_magnification;
-  let disc_center_y = 500 * genaral_magnification;
-  let disc_radius = 478 * genaral_magnification;
+  let disc_center_x = record_pos_default[0] * genaral_magnification;
+  let disc_center_y = record_pos_default[1] * genaral_magnification;
+  let disc_radius = disc_radius_default * genaral_magnification;
 
   // 入力されたX座標におけるレコードの外周のY座標を求める
   let distance_x = Math.abs(x - disc_center_x);
@@ -761,9 +798,8 @@ const isInDisc = (x, y) => {
  * @return ポインター位置のディスク中心に対する角度[deg]
  */
 const GetAngleOnDisc = (x, y) => {
-  // ウインドウ倍率1の時のレコードの中心は[550, 500]
-  let disc_center_x = 550 * genaral_magnification;
-  let disc_center_y = 500 * genaral_magnification;
+  let disc_center_x = record_pos_default[0] * genaral_magnification;
+  let disc_center_y = record_pos_default[1] * genaral_magnification;
 
   // 入力されたX座標におけるレコードの外周のY座標を求める
   let distance_x = x - disc_center_x;

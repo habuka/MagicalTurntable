@@ -40,6 +40,17 @@
   position: absolute;
   width: 105px;
   height: 105px;
+  border-radius: 50%;
+  background: transparent;
+  /* border: none; */
+  z-index: 201;
+}
+
+#back {
+  position: absolute;
+  width: 85px;
+  height: 85px;
+  border-radius: 50%;
   background: transparent;
   /* border: none; */
   z-index: 201;
