@@ -57,6 +57,20 @@ const needle_axis_pos_default = [1087, 244];
 const disc_radius_default = 478;
 
 /**
+ * レコードの黒い部分の内側までの半径[px]
+ * ビートに合わせた演出の表示領域
+ * キャンバス倍率1の時の値
+ */
+const disc_beat_radius_begin_default = 150;
+
+/**
+ * レコードの黒い部分の外側までの半径[px]
+ * ビートに合わせた演出の表示領域
+ * キャンバス倍率1の時の値
+ */
+const disc_beat_radius_end_default = 429;
+
+/**
  * レコード針の位置(歌詞出現場所)のレコード中心からの距離[px]
  * キャンバス倍率1の時の値
  */
@@ -90,7 +104,7 @@ const back_button_size_default = [85, 85];
  * レコード針の回転角度の下限値[deg]
  * 曲の初めはこの位置
  */
-const angle_needle_min = 16.5;
+const angle_needle_min = 18.5;
 
 /**
  * レコード針の回転角度の上限値[deg]
@@ -534,13 +548,6 @@ new P5((p5) => {
       break;
     case 1:
       // 再生中
-      // const beat = player.findBeat(position);
-      // if (beat) {
-      //   const progress = beat.progress(position);
-      //   const rectHeight = Ease.quintIn(progress) * height;
-      //   p5.fill(0, 0, 0, Ease.quintOut(progress) * 60);
-      //   p5.rect(0, rectHeight, width, height - rectHeight);
-      // }
       // 再生中はディスク回転。一定速度でそれっぽく回っていればいいのでデフォルトRPMでインクリメント
       angle_disc += rpm_default / 60 * 360 / frame_rate;
 
@@ -582,6 +589,30 @@ new P5((p5) => {
     p5.image(img_disc, 0, 0);
     p5.pop();
 
+    if (play_mode == 1) {
+      // 再生中はビートに合わせた演出を行う
+      const beat = player.findBeat(position);
+      if (beat) {
+        let beat_effect = p5.createGraphics(default_width, default_height);
+        const progress = beat.progress(position);
+        const radius = disc_beat_radius_begin_default
+                       + (disc_beat_radius_end_default - disc_beat_radius_begin_default) * Ease.quintIn(progress);
+
+        p5.push();
+        beat_effect.ellipseMode(beat_effect.RADIUS);
+        beat_effect.imageMode(beat_effect.CENTER);
+        beat_effect.translate(record_pos_default[0], record_pos_default[1]);
+        beat_effect.fill(150, 150, 150, Ease.quintOut(progress) * 60);
+        beat_effect.ellipse(0, 0, disc_beat_radius_end_default, disc_beat_radius_end_default);
+        // 内周をくり抜く
+        beat_effect.erase();
+        beat_effect.ellipse(0, 0, radius, radius);
+        beat_effect.noErase();
+        p5.image(beat_effect, 0, 0);
+        beat_effect.remove(); // remove()でメモリを解放する(やらないとブラウザが落ちる！！！)
+        p5.pop();
+      }
+    }
 
     // 歌詞の描画
     p5.push();
