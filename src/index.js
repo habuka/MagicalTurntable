@@ -189,7 +189,6 @@ let angle_disc = 0;
 const player = new Player({
   // トークンは https://developer.textalive.jp/profile で取得したものを使う
   app: { token: "xsnERhRnjyZIGziY" },
-  mediaElement: document.querySelector("#media"),
 });
 
 // リスナの登録 / Register listeners
@@ -207,7 +206,16 @@ player.addListener({
   onVideoReady: () => {
     console.log("player.onVideoReady");
     CreatePositionList();
-    // document.querySelector("#overlay").className = "inactive";
+  },
+
+  onTimerReady: () => {
+    // このイベントハンドラが呼ばれたらプレイヤー準備完了なので画面を切り返る
+    console.log("player.onTimerReady");
+    document.getElementById('loading').style.display = "none";
+    document.getElementById('song_select').style.display = "none";
+    document.getElementById('startstop').style.display = "block";
+    document.getElementById('back').style.display = "block";
+    document.getElementById('p5js').style.display = "flex";
   },
 
   onPlay: () => {
@@ -361,9 +369,7 @@ const StartPlayer = (song_id) => {
     break;
   }
   document.getElementById('song_select').style.display = "none";
-  document.getElementById('startstop').style.display = "block";
-  document.getElementById('back').style.display = "block";
-  document.getElementById('p5js').style.display = "flex";
+  document.getElementById('loading').style.display = "block";
 }
 
 // START/STOPボタン
@@ -521,6 +527,7 @@ new P5((p5) => {
     player.volume = 20; // 100だと大きすぎるので調整
 
     // キャンバス作成時には楽曲選択画面
+    document.getElementById('loading').style.display = "none";
     document.getElementById('p5js').style.display = "none";
     document.getElementById('startstop').style.display = "none";
     document.getElementById('back').style.display = "none";

@@ -13,13 +13,6 @@
   z-index: 100;
 }
 
-#media {
-  position: absolute;
-  right: 5px;
-  bottom: 5px;
-  z-index: 200;
-}
-
 #wrapper {
   position: absolute;
   top: 0;
@@ -41,6 +34,7 @@
   width: 105px;
   height: 105px;
   border-radius: 50%;
+  display: none;
   background: transparent;
   /* border: none; */
   z-index: 201;
@@ -51,12 +45,30 @@
   width: 85px;
   height: 85px;
   border-radius: 50%;
+  display: none;
   background: transparent;
   /* border: none; */
   z-index: 201;
 }
 
 /* ローディング画面 */
+#loading {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+  align-items: center;
+  margin: auto;
+  transition: all 1s;
+  background: rgb(94, 255, 0);
+  z-index: 100;
+}
+
+/* 楽曲選択画面 */
 #song_select {
   position: absolute;
   top: 0;
@@ -76,12 +88,4 @@
 .song_btn {
   width: 105px;
   height: 105px;
-}
-
-.inactive {
-  display: none !important;
-}
-
-.active {
-  display: block !important;
 }
