@@ -83,10 +83,16 @@ const needle_radius_default = 400;
 const startstop_button_pos_default = [42, 871];
 
 /**
+ * REPLAYボタンの位置[left, top[px]]
+ * キャンバス倍率1の時の値
+ */
+const replay_button_pos_default = [42, 778];
+
+/**
  * BACKボタンの位置[left, top[px]]
  * キャンバス倍率1の時の値
  */
-const back_button_pos_default = [30, 753];
+const back_button_pos_default = [27, 698];
 
 /**
  * START/STOPボタンのサイズ[width, height[px]]
@@ -95,10 +101,16 @@ const back_button_pos_default = [30, 753];
 const startstop_button_size_default = [105, 105];
 
 /**
+ * REPLAYボタンのサイズ[width, height[px]]
+ * キャンバス倍率1の時の値
+ */
+const replay_button_size_default = [82, 82];
+
+/**
  * BACKボタンのサイズ[width, height[px]]
  * キャンバス倍率1の時の値
  */
-const back_button_size_default = [85, 85];
+const back_button_size_default = [66, 66];
 
 /**
  * レコード針の回転角度の下限値[deg]
@@ -214,6 +226,7 @@ player.addListener({
     document.getElementById('loading').style.display = "none";
     document.getElementById('song_select').style.display = "none";
     document.getElementById('startstop').style.display = "block";
+    document.getElementById('replay').style.display = "block";
     document.getElementById('back').style.display = "block";
     document.getElementById('p5js').style.display = "flex";
   },
@@ -391,11 +404,23 @@ document.querySelector("#startstop").addEventListener("click", () => {
   }
 });
 
+// REPLAYボタン
+document.querySelector("#replay").addEventListener("click", () => {
+  if (play_mode <= 1) {
+    // 皿回し中は無効
+    player.requestPause();
+    play_mode = 0;
+    angle_canvas = 0;
+    player.requestMediaSeek(0);
+  }
+});
+
 // BACKボタン
 document.querySelector("#back").addEventListener("click", () => {
   player.requestStop();
   document.getElementById('p5js').style.display = "none";
   document.getElementById('startstop').style.display = "none";
+  document.getElementById('replay').style.display = "none";
   document.getElementById('back').style.display = "none";
   document.getElementById('song_select').style.display = "block";
 });
@@ -509,6 +534,11 @@ new P5((p5) => {
     img_disc = p5.loadImage("../img/disc.png"); // ディスク
     img_needle = p5.loadImage("../img/needle.png"); // 針
     img_frame = p5.loadImage("../img/frame.png"); // フレーム
+    img_startstop_play = p5.loadImage("../img/button_startstop_play.png"); // START/STOPボタン(再生中)
+    img_startstop_stop = p5.loadImage("../img/button_startstop_stop.png"); // START/STOPボタン(停止中)
+    img_replay_play = p5.loadImage("../img/button_replay_play.png"); // REPLAYボタン(再生中)
+    img_replay_stop = p5.loadImage("../img/button_replay_stop.png"); // REPLAYボタン(停止中)
+    img_back = p5.loadImage("../img/button_back.png"); // BACKボタン
   };
 
   // キャンバスを作成
@@ -530,6 +560,7 @@ new P5((p5) => {
     document.getElementById('loading').style.display = "none";
     document.getElementById('p5js').style.display = "none";
     document.getElementById('startstop').style.display = "none";
+    document.getElementById('replay').style.display = "none";
     document.getElementById('back').style.display = "none";
   };
 
@@ -548,6 +579,16 @@ new P5((p5) => {
     // 筐体
     p5.imageMode(p5.CORNER);
     p5.image(img_frame, 0, 0);
+    p5.image(img_back, 0, 0);
+    // 再生中 or 停止中でライトの色を切り替える
+    if ((play_mode == 1) ||
+        (play_mode == 3)) {
+      p5.image(img_startstop_play, 0, 0);
+      p5.image(img_replay_play, 0, 0);
+    } else {
+      p5.image(img_startstop_stop, 0, 0);
+      p5.image(img_replay_stop, 0, 0);
+    }
 
     switch (play_mode) {
     case 0:
@@ -609,11 +650,17 @@ new P5((p5) => {
         beat_effect.ellipseMode(beat_effect.RADIUS);
         beat_effect.imageMode(beat_effect.CENTER);
         beat_effect.translate(record_pos_default[0], record_pos_default[1]);
-        beat_effect.fill(150, 150, 150, Ease.quintOut(progress) * 60);
+        beat_effect.fill(150, 150, 150, Ease.quintIn(progress) * 60);
         beat_effect.ellipse(0, 0, disc_beat_radius_end_default, disc_beat_radius_end_default);
-        // 内周をくり抜く
+        // 光の輪が広がる演出
         beat_effect.erase();
         beat_effect.ellipse(0, 0, radius, radius);
+        beat_effect.noErase();
+        beat_effect.fill(150, 150, 150, 60);
+        beat_effect.ellipse(0, 0, radius, radius);
+        // 内周をくり抜く
+        beat_effect.erase();
+        beat_effect.ellipse(0, 0, disc_beat_radius_begin_default, disc_beat_radius_begin_default);
         beat_effect.noErase();
         p5.image(beat_effect, 0, 0);
         beat_effect.remove(); // remove()でメモリを解放する(やらないとブラウザが落ちる！！！)
@@ -718,6 +765,12 @@ new P5((p5) => {
     startstop_button.style.height = (startstop_button_size_default[1] * genaral_magnification) + 'px';
     startstop_button.style.left = (startstop_button_pos_default[0] * genaral_magnification) + 'px';
     startstop_button.style.top = (startstop_button_pos_default[1] * genaral_magnification) + 'px';
+
+    replay_button = document.getElementById("replay");
+    replay_button.style.width = (replay_button_size_default[0] * genaral_magnification) + 'px';
+    replay_button.style.height = (replay_button_size_default[1] * genaral_magnification) + 'px';
+    replay_button.style.left = (replay_button_pos_default[0] * genaral_magnification) + 'px';
+    replay_button.style.top = (replay_button_pos_default[1] * genaral_magnification) + 'px';
 
     back_button = document.getElementById("back");
     back_button.style.width = (back_button_size_default[0] * genaral_magnification) + 'px';
