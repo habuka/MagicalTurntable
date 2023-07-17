@@ -62,6 +62,16 @@
   z-index: 201;
 }
 
+#volume_slider {
+  position: absolute;
+  width: 54px;
+  height: 62px;
+  display: block;
+  background: transparent;
+  border: none;
+  z-index: 201;
+}
+
 /* ローディング画面 */
 #loading {
   position: absolute;

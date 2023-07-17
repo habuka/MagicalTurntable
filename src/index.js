@@ -20,6 +20,11 @@ const default_height = 1000;
 const rpm_default = 5;
 
 /**
+ * 文字サイズのデフォルト値
+ */
+const char_size_default = 40;
+
+/**
  * 通常再生時に歌詞の表示が始まる角度[deg]
  * キャンバスの回転を加味しない見かけ上の位置
  * レコード針がある位置
@@ -49,6 +54,18 @@ const record_pos_default = [522, 500];
  * キャンバス倍率1の時の値
  */
 const needle_axis_pos_default = [1087, 244];
+
+/**
+ * レコード針のアームの長さ[px]
+ * キャンバス倍率1の時の値
+ */
+const needle_arm_length = 667;
+
+/**
+ * レコード針の元画像におけるレコード針の初期角度[deg]
+ * 右方向を基準として時計回りに回した際の角度
+ */
+const needle_angle_offset = 102;
 
 /**
  * レコードの半径[px]
@@ -95,6 +112,32 @@ const replay_button_pos_default = [42, 778];
 const back_button_pos_default = [27, 698];
 
 /**
+ * VOLUMEツマミの位置[left, top[px]]
+ * キャンバス倍率1の時の値
+ */
+const volume_slider_pos_default = [1189, 733];
+
+/**
+ * VOLUMEツマミの上限Y座標[top[px]]
+ * キャンバス倍率1の時の値
+ * この時に音量が最大になる
+ */
+const volume_slider_max = 592;
+
+/**
+ * VOLUMEツマミの下限Y座標[top[px]]
+ * キャンバス倍率1の時の値
+ * この時に音量が0になる
+ */
+const volume_slider_min = 865;
+
+/**
+ * 音量の最大値[0-100]
+ * 100はデカすぎるので調整。初期値は25
+ */
+const volume_max = 50;
+
+/**
  * START/STOPボタンのサイズ[width, height[px]]
  * キャンバス倍率1の時の値
  */
@@ -113,14 +156,22 @@ const replay_button_size_default = [82, 82];
 const back_button_size_default = [66, 66];
 
 /**
+ * VOLUMEツマミのサイズ[width, height[px]]
+ * キャンバス倍率1の時の値
+ */
+const volume_slider_size_default = [54, 62];
+
+/**
  * レコード針の回転角度の下限値[deg]
  * 曲の初めはこの位置
+ * 真下を基準とした値
  */
 const angle_needle_min = 18.5;
 
 /**
  * レコード針の回転角度の上限値[deg]
  * 曲の終わりはこの位置
+ * 真下を基準とした値
  */
 const angle_needle_max = 38;
 
@@ -151,10 +202,16 @@ let scene_mode = 0;
 let genaral_magnification = 0;
 
 /**
- * 歌詞ごとのキャンバス上の位置と角度{X座標, Y座標, 角度}
+ * 歌詞ごとのキャンバス上の位置と角度[X座標, Y座標, 角度]
  * キャンバスの回転を加味した角度
  */
-let char_pos = [];
+let char_pos_list = [];
+
+/**
+ * 歌詞ごとの発声時間におけるレコード針の位置[X座標, Y座標]
+ * キャンバスの回転を加味した角度
+ */
+let needle_pos_list = [];
 
 /**
  * 歌詞ごとの回転角度[deg]のリスト
@@ -166,6 +223,12 @@ let rotation_list = [];
  * 歌詞ごとの発声開始時間[ms]のリスト
  */
 let starttime_list = [];
+
+/**
+ * VOLUMEツマミの位置[left, top[px]]
+
+ */
+let volume_slider_pos = [];
 
 /**
  * 回転角度リストの要素数
@@ -181,6 +244,13 @@ let rotation_list_size = 0;
  * 3: 再生中皿回し
  */
 let play_mode = 0;
+
+/**
+ * VOLUMEツマミモードの定義
+ * 0: 操作中でない
+ * 1: 操作中
+ */
+let vol_slider_mode = 0;
 
 /**
  * 直前の皿回し処理におけるポインター位置のディスク上の見かけの角度
@@ -488,7 +558,22 @@ const mousemove = (e) => {
       angle_disc = 0;
     }
     previous_pointer_angle = current_pointer_angle;
+  } else if (vol_slider_mode == 1) {
+    ChangeVolume(e.pageY);
   }
+}
+
+const ChangeVolume = (y) => {
+  let y_dif = y / genaral_magnification - volume_slider_pos[1];
+  if ((volume_slider_pos[1] + y_dif) > volume_slider_min) {
+    volume_slider_pos[1] = volume_slider_min;
+  } else if ((volume_slider_pos[1] + y_dif) < volume_slider_max) {
+    volume_slider_pos[1] = volume_slider_max;
+  } else {
+    volume_slider_pos[1] += y_dif;
+  }
+  document.getElementById("volume_slider").style.top = (volume_slider_pos[1] * genaral_magnification) + 'px';
+  player.volume = (volume_slider_min - volume_slider_pos[1]) / (volume_slider_min - volume_slider_max) * volume_max;
 }
 
 // 皿回し終了処理
@@ -519,7 +604,27 @@ const mouseup = (e) => {
     // 再生中皿回しの場合終了後再生状態
     player.requestPlay();
     play_mode = 1;
+  } else if (vol_slider_mode == 1) {
+    vol_slider_mode = 0;
+    document.getElementById('volume_slider').style.display = "block";
   }
+}
+
+// VOLUMEツマミ処理
+// マウス操作用イベントハンドラ
+document.querySelector("#volume_slider").addEventListener("mousedown", (e) => {
+  mousedown_vol(e);
+});
+
+// タッチ操作用イベントハンドラ
+document.querySelector("#volume_slider").addEventListener("touchstart", (e) => {
+  mousedown_vol(e.changedTouches[0]);
+});
+
+// 共通処理
+const mousedown_vol = (e) => {
+  vol_slider_mode = 1;
+  document.getElementById('volume_slider').style.display = "none";
 }
 
 // p5.js を初期化
@@ -533,18 +638,23 @@ new P5((p5) => {
     // 画像を読み込む
     img_disc = p5.loadImage("../img/disc.png"); // ディスク
     img_needle = p5.loadImage("../img/needle.png"); // 針
+    img_needle_cover = p5.loadImage("../img/needle_cover.png"); // 針カバー
     img_frame = p5.loadImage("../img/frame.png"); // フレーム
     img_startstop_play = p5.loadImage("../img/button_startstop_play.png"); // START/STOPボタン(再生中)
     img_startstop_stop = p5.loadImage("../img/button_startstop_stop.png"); // START/STOPボタン(停止中)
     img_replay_play = p5.loadImage("../img/button_replay_play.png"); // REPLAYボタン(再生中)
     img_replay_stop = p5.loadImage("../img/button_replay_stop.png"); // REPLAYボタン(停止中)
     img_back = p5.loadImage("../img/button_back.png"); // BACKボタン
+    img_volume_slider = p5.loadImage("../img/volume_slider.png"); // VOLUMEツマミ
   };
 
   // キャンバスを作成
   p5.setup = () => {
     let canvas = p5.createCanvas(p5.windowWidth, p5.windowHeight);
     canvas.parent(p5js_canvas);
+    player.volume = 25;
+    volume_slider_pos[0] = volume_slider_pos_default[0];
+    volume_slider_pos[1] = volume_slider_pos_default[1];
     p5.ResizeWindow();
     p5.translate(width / 2, height / 2);
     p5.colorMode(p5.HSB, 100);
@@ -554,7 +664,6 @@ new P5((p5) => {
     p5.noStroke();
     p5.textFont("Noto Sans JP");
     p5.textAlign(p5.CENTER, p5.CENTER);
-    player.volume = 20; // 100だと大きすぎるので調整
 
     // キャンバス作成時には楽曲選択画面
     document.getElementById('loading').style.display = "none";
@@ -589,6 +698,9 @@ new P5((p5) => {
       p5.image(img_startstop_stop, 0, 0);
       p5.image(img_replay_stop, 0, 0);
     }
+
+    // VOLUMEツマミ
+    p5.image(img_volume_slider, volume_slider_pos[0], volume_slider_pos[1]);
 
     switch (play_mode) {
     case 0:
@@ -674,32 +786,63 @@ new P5((p5) => {
     p5.rotate(angle_canvas);
     p5.translate(-record_pos_default[0], -record_pos_default[1]);
 
-    // このフレームで描画する文字を決める
+    // 文字の描画
     for (let i = 0; i < rotation_list_size - 2; i++) {
+      // 出現角度が現在のキャンバス角度の範囲内にある文字のみ描画
       if (angle_canvas <= (rotation_list[i + 1] + 300)) {
         if ((rotation_list[i + 1] - 5) <= angle_canvas) {
           let char = player.video.getChar(i);
           let transparency;
-          let size = 39;
+          let size = char_size_default;
 
-          if (angle_canvas <= (rotation_list[i + 1] + 5)) {
-            // 10°かけてフェードインする
-            transparency = 1 - ((rotation_list[i + 1] + 5) - angle_canvas) / 10;
-          } else if (rotation_list[i + 1] + 270 <= angle_canvas) {
-            // 30°かけてフェードアウトする
-            transparency = 1 - (angle_canvas - (rotation_list[i + 1] + 270)) / 30;
+          let char_pos_temp = [char_pos_list[i][0], char_pos_list[i][1], char_pos_list[i][2]];
+
+          if (play_mode == 1) {
+            // 再生中は針の位置からフェードインさせる処理を行う
+            // 100msかけてフェードインする
+            if ((char.startTime - 100 < position) &&
+                (position < char.startTime)) {
+              // 針の位置から目標位置までの線形補間値とする
+              const progress = 1 - (char.startTime - position) / 100;
+              char_pos_temp[0] = needle_pos_list[i][0]
+                                 + (char_pos_list[i][0] - needle_pos_list[i][0]) * progress;
+              char_pos_temp[1] = needle_pos_list[i][1]
+                                 + (char_pos_list[i][1] - needle_pos_list[i][1]) * progress;
+
+              const eased = Ease.circIn(progress);
+              transparency = progress;
+              size = char_size_default * eased + 200 * (1 - eased);
+            } else if ((position < char.startTime) &&
+                       (angle_canvas <= (rotation_list[i + 1] + 5))) {
+              // 100ms以前で出現領域に引っかかっている場合は非表示
+              transparency = 0;
+            } else if (rotation_list[i + 1] + 270 <= angle_canvas) {
+              // 30°かけてフェードアウトする
+              transparency = 1 - (angle_canvas - (rotation_list[i + 1] + 270)) / 30;
+            } else {
+              // それ以外の区間は完全に不透明
+              transparency = 1;
+            }
           } else {
-            // それ以外の区間は完全に不透明
-            transparency = 1;
+            if (angle_canvas <= (rotation_list[i + 1] + 5)) {
+              // 10°かけてフェードインする
+              transparency = 1 - ((rotation_list[i + 1] + 5) - angle_canvas) / 10;
+            } else if (rotation_list[i + 1] + 270 <= angle_canvas) {
+              // 30°かけてフェードアウトする
+              transparency = 1 - (angle_canvas - (rotation_list[i + 1] + 270)) / 30;
+            } else {
+              // それ以外の区間は完全に不透明
+              transparency = 1;
+            }
           }
 
           p5.fill(0, 0, 100, transparency * 100);
           p5.textSize(size);
           p5.push();
-          p5.translate(char_pos[i][0], char_pos[i][1]);
-          p5.rotate(char_pos[i][2]);
-          p5.translate(-char_pos[i][0], -char_pos[i][1]);
-          p5.text(char.text, char_pos[i][0], char_pos[i][1]);
+          p5.translate(char_pos_temp[0], char_pos_temp[1]);
+          p5.rotate(char_pos_temp[2]);
+          p5.translate(-char_pos_temp[0], -char_pos_temp[1]);
+          p5.text(char.text, char_pos_temp[0], char_pos_temp[1]);
           p5.pop();
         } else {
           break;
@@ -711,12 +854,18 @@ new P5((p5) => {
     // 針の描画
     p5.push();
     p5.imageMode(p5.CORNER);
-    let angle_needle = (angle_needle_min
-                        + (angle_needle_max - angle_needle_min) * GetPositionByAngle(angle_canvas) / (player.video.duration));
+    let angle_needle = angle_needle_min
+                       + (angle_needle_max - angle_needle_min) * GetPositionByAngle(angle_canvas) / (player.video.duration);
     p5.translate(needle_axis_pos_default[0], needle_axis_pos_default[1]);
     p5.rotate(angle_needle);
     p5.translate(-needle_axis_pos_default[0], -needle_axis_pos_default[1]);
     p5.image(img_needle, 0, 0);
+    p5.pop();
+
+    // 針カバーの描画
+    p5.push();
+    p5.imageMode(p5.CORNER);
+    p5.image(img_needle_cover, 0, 0);
     p5.pop();
   };
 
@@ -777,6 +926,12 @@ new P5((p5) => {
     back_button.style.height = (back_button_size_default[1] * genaral_magnification) + 'px';
     back_button.style.left = (back_button_pos_default[0] * genaral_magnification) + 'px';
     back_button.style.top = (back_button_pos_default[1] * genaral_magnification) + 'px';
+
+    volume_slider = document.getElementById("volume_slider");
+    volume_slider.style.width = (volume_slider_size_default[0] * genaral_magnification) + 'px';
+    volume_slider.style.height = (volume_slider_size_default[1] * genaral_magnification) + 'px';
+    volume_slider.style.left = (volume_slider_pos[0] * genaral_magnification) + 'px';
+    volume_slider.style.top = (volume_slider_pos[1] * genaral_magnification) + 'px';
   };
 });
 
@@ -810,8 +965,13 @@ const CreatePositionList = () => {
       total_rotation_deg += min_text_interval_deg;
     }
     rotation_list[rotation_list_size] = total_rotation_deg;
-    char_pos_temp = GetNeedlePos(total_rotation_deg);
-    char_pos[rotation_list_size - 1] = [char_pos_temp[0], char_pos_temp[1], char_pos_temp[2]];
+    char_pos_temp = GetCharPos(total_rotation_deg);
+    char_pos_list[rotation_list_size - 1] = [char_pos_temp[0], char_pos_temp[1], char_pos_temp[2]];
+
+    let angle_needle = angle_needle_min
+                       + (angle_needle_max - angle_needle_min) * char.startTime / (player.video.duration);
+    let needle_pos_temp = GetNeedlePos(angle_needle, total_rotation_deg);
+    needle_pos_list[rotation_list_size - 1] = [needle_pos_temp[0], needle_pos_temp[1]];
 
     previous_char_time = char.startTime;
     starttime_list[rotation_list_size] = char.startTime;
@@ -829,19 +989,41 @@ const CreatePositionList = () => {
 }
 
 /**
- * @fn GetNeedlePos
- * @brief キャンバスの回転を考慮したレコード針の場所(歌詞が出る場所)を取得する
+ * @fn GetCharPos
+ * @brief キャンバスの回転を考慮した歌詞の座標を取得する
  * @param[in] angle: 現在のキャンバスの回転角度[deg]
- * @retval x: レコード針のX座標
- * @retval y: レコード針のX座標
- * @retval deg: 文字の回転角度
+ * @retval x: 歌詞のX座標
+ * @retval y: 歌詞のY座標
+ * @retval char_rotation: 文字の回転角度[deg]
  */
-const GetNeedlePos = (deg) => {
-  rad = Deg2Rad(text_area_angle_begin - deg); // 初期値を真下方向に
-  radius = needle_radius_default;
-  x = radius * Math.cos(rad) + record_pos_default[0];
-  y = radius * Math.sin(rad) + record_pos_default[1];
-  return [x, y, text_area_angle_begin - deg - 90];
+const GetCharPos = (deg) => {
+  let rad = Deg2Rad(text_area_angle_begin - deg); // 出現位置のオフセット+時計回り
+  let x = needle_radius_default * Math.cos(rad) + record_pos_default[0];
+  let y = needle_radius_default * Math.sin(rad) + record_pos_default[1];
+  let char_rotation = text_area_angle_begin - deg - 90; // 円周沿いの向きになるように90°オフセット
+  return [x, y, char_rotation];
+}
+
+/**
+ * @fn GetNeedlePos
+ * @brief レコード針の回転(楽曲の進行度)とキャンバスの回転を考慮したレコード針先端の位置を取得する
+ * @param[in] needle: レコード針の回転角度[deg]
+ * @param[in] canvas: キャンバスの回転角度[deg]
+ * @retval x: 歌詞のX座標
+ * @retval y: 歌詞のY座標
+ */
+const GetNeedlePos = (needle, canvas) => {
+  // まずはキャンバスの回転を考慮しない見かけ上の位置を計算する
+  let angle_needle_rad = Deg2Rad(needle_angle_offset + needle);
+  let x_norotation = needle_arm_length * Math.cos(angle_needle_rad) + needle_axis_pos_default[0];
+  let y_norotation = needle_arm_length * Math.sin(angle_needle_rad) + needle_axis_pos_default[1];
+
+  // 次に、キャンバスの回転を考慮するとこの位置がどの座標に来るかを計算する
+  let radius = Math.hypot(x_norotation - record_pos_default[0], y_norotation - record_pos_default[1]);
+  let angle_canvas_rad = Deg2Rad(text_area_angle_begin - canvas);
+  let x = radius * Math.cos(angle_canvas_rad) + record_pos_default[0];
+  let y = radius * Math.sin(angle_canvas_rad) + record_pos_default[1];
+  return [x, y];
 }
 
 /**
