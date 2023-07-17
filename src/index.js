@@ -32,12 +32,6 @@ const char_size_default = 40;
 const text_area_angle_begin = 60;
 
 /**
- * 歌詞を表示する領域(上限)。
- * キャンバスの回転を加味しない見かけ上の角度[deg]
- */
-const text_area_angle_end = 300
-
-/**
  * 歌詞ごとの最低間隔[deg]
  * デフォルトのRPMでこの間隔以下になる場合、一時的に回転速度を上げる
  */
@@ -175,8 +169,6 @@ const angle_needle_min = 18.5;
  */
 const angle_needle_max = 38;
 
-let p5js_canvas = document.getElementById('p5js');
-
 /**
  * 楽曲選択
  * -1: 未選択
@@ -188,13 +180,6 @@ let p5js_canvas = document.getElementById('p5js');
  * 5 : Entrust via 39 / ikomai feat. 初音ミク
  */
 let song_id = -1;
-
-/**
- * シーンのモードの定義
- * 0: 楽曲選択画面
- * 1: 楽曲再生画面
- */
-let scene_mode = 0;
 
 /**
  * アプリ全体の拡大率
@@ -667,7 +652,7 @@ new P5((p5) => {
   // キャンバスを作成
   p5.setup = () => {
     let canvas = p5.createCanvas(p5.windowWidth, p5.windowHeight);
-    canvas.parent(p5js_canvas);
+    canvas.parent(document.getElementById('p5js'));
     player.volume = 25;
     volume_slider_pos[0] = volume_slider_pos_default[0];
     volume_slider_pos[1] = volume_slider_pos_default[1];
