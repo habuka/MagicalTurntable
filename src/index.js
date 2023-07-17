@@ -552,6 +552,8 @@ const mousemove = (e) => {
     } else if (pointer_angle_dif < -180) {
       pointer_angle_dif += 360;
     }
+
+    // 楽曲の先頭か終端に到達した場合はそれ以上回転させない
     if (angle_canvas + pointer_angle_dif < 0) {
       angle_canvas = 0;
     } else if (angle_canvas + pointer_angle_dif > rotation_list[rotation_list_size - 1]) {
@@ -561,7 +563,7 @@ const mousemove = (e) => {
     }
     if (angle_disc + pointer_angle_dif < 0) {
       angle_disc = 0;
-    } else {
+    } else if (angle_canvas < rotation_list[rotation_list_size - 1]) {
       angle_disc += pointer_angle_dif;
     }
     previous_pointer_angle = current_pointer_angle;
@@ -1107,15 +1109,22 @@ const GetAngleOnDisc = (x, y) => {
  */
 const GetPositionByAngle = (angle) => {
   let i;
+  let progress;
+  let position;
+
   for (i = 0; i < rotation_list_size; i++) {
     if (angle < rotation_list[i]) {
       break;
     }
   }
-  let progress = (angle - rotation_list[i - 1])
-                 / (rotation_list[i] - rotation_list[i - 1]);
-  let position = starttime_list[i - 1]
-                 + (starttime_list[i] - starttime_list[i - 1]) * progress;
+  if (i == rotation_list_size) {
+    position = starttime_list[i - 1];
+  } else {
+    progress = (angle - rotation_list[i - 1])
+                  / (rotation_list[i] - rotation_list[i - 1]);
+    position = starttime_list[i - 1]
+                  + (starttime_list[i] - starttime_list[i - 1]) * progress;
+  }
   return position;
 }
 
