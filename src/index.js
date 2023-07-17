@@ -258,6 +258,11 @@ let vol_slider_mode = 0;
 let previous_pointer_angle = 0;
 
 /**
+ * 直前のVOLUMEツマミ操作におけるポインター位置のy座標
+ */
+let previous_pointer_volume_y = 0;
+
+/**
  * キャンバス自体の回転角度
  */
 let angle_canvas = 0;
@@ -452,7 +457,7 @@ const StartPlayer = (song_id) => {
     break;
   }
   document.getElementById('song_select').style.display = "none";
-  document.getElementById('loading').style.display = "block";
+  document.getElementById('loading').style.display = "flex";
 }
 
 // START/STOPボタン
@@ -492,7 +497,7 @@ document.querySelector("#back").addEventListener("click", () => {
   document.getElementById('startstop').style.display = "none";
   document.getElementById('replay').style.display = "none";
   document.getElementById('back').style.display = "none";
-  document.getElementById('song_select').style.display = "block";
+  document.getElementById('song_select').style.display = "flex";
 });
 
 // 皿回し開始処理
@@ -547,15 +552,17 @@ const mousemove = (e) => {
     } else if (pointer_angle_dif < -180) {
       pointer_angle_dif += 360;
     }
-    angle_canvas += pointer_angle_dif;
-    if (angle_canvas < 0) {
+    if (angle_canvas + pointer_angle_dif < 0) {
       angle_canvas = 0;
-    } else if (angle_canvas > rotation_list[rotation_list_size - 1]) {
+    } else if (angle_canvas + pointer_angle_dif > rotation_list[rotation_list_size - 1]) {
       angle_canvas = rotation_list[rotation_list_size - 1];
+    } else {
+      angle_canvas += pointer_angle_dif;
     }
-    angle_disc += pointer_angle_dif;
-    if (angle_disc < 0) {
+    if (angle_disc + pointer_angle_dif < 0) {
       angle_disc = 0;
+    } else {
+      angle_disc += pointer_angle_dif;
     }
     previous_pointer_angle = current_pointer_angle;
   } else if (vol_slider_mode == 1) {
@@ -564,7 +571,7 @@ const mousemove = (e) => {
 }
 
 const ChangeVolume = (y) => {
-  let y_dif = y / genaral_magnification - volume_slider_pos[1];
+  let y_dif = (y - previous_pointer_volume_y) / genaral_magnification;
   if ((volume_slider_pos[1] + y_dif) > volume_slider_min) {
     volume_slider_pos[1] = volume_slider_min;
   } else if ((volume_slider_pos[1] + y_dif) < volume_slider_max) {
@@ -572,6 +579,7 @@ const ChangeVolume = (y) => {
   } else {
     volume_slider_pos[1] += y_dif;
   }
+  previous_pointer_volume_y = y;
   document.getElementById("volume_slider").style.top = (volume_slider_pos[1] * genaral_magnification) + 'px';
   player.volume = (volume_slider_min - volume_slider_pos[1]) / (volume_slider_min - volume_slider_max) * volume_max;
 }
@@ -579,6 +587,11 @@ const ChangeVolume = (y) => {
 // 皿回し終了処理
 // マウス操作用イベントハンドラ
 document.querySelector("#p5js").addEventListener("mouseup", (e) => {
+  mouseup(e);
+});
+
+// マウス操作用イベントハンドラ
+document.querySelector("#p5js").addEventListener("mouseleave", (e) => {
   mouseup(e);
 });
 
@@ -624,6 +637,7 @@ document.querySelector("#volume_slider").addEventListener("touchstart", (e) => {
 // 共通処理
 const mousedown_vol = (e) => {
   vol_slider_mode = 1;
+  previous_pointer_volume_y = e.pageY;
   document.getElementById('volume_slider').style.display = "none";
 }
 
@@ -655,6 +669,7 @@ new P5((p5) => {
     player.volume = 25;
     volume_slider_pos[0] = volume_slider_pos_default[0];
     volume_slider_pos[1] = volume_slider_pos_default[1];
+    previous_pointer_volume_y = volume_slider_pos_default[1];
     p5.ResizeWindow();
     p5.translate(width / 2, height / 2);
     p5.colorMode(p5.HSB, 100);
@@ -681,6 +696,11 @@ new P5((p5) => {
     }
     // 現在の再生位置
     const position = player.timer.position;
+
+    // 再生開始直後に再生位置が不正な場合があるので弾く
+    if (position >= player.video.duration) {
+      return;
+    }
 
     p5.resizeCanvas(p5.windowWidth, p5.windowHeight);
     p5.scale(genaral_magnification);
@@ -734,11 +754,6 @@ new P5((p5) => {
     case 3:
       // 再生中皿回し
       break;
-    }
-
-    // 再生開始直後に再生位置が不正な場合があるので弾く
-    if (position >= player.video.duration) {
-      return;
     }
 
     // ディスクの描画

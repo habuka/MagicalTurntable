@@ -26,7 +26,7 @@
 }
 
 #dummy {
-  opacity: 0;
+  display: none;
 }
 
 #startstop {
@@ -74,6 +74,8 @@
 
 /* ローディング画面 */
 #loading {
+  display: flex;
+  flex-flow: column;
   position: absolute;
   top: 0;
   right: 0;
@@ -81,16 +83,18 @@
   left: 0;
   width: 100%;
   height: 100%;
-  display: none;
+  text-align: center;
   align-items: center;
   margin: auto;
-  transition: all 1s;
-  background: rgb(94, 255, 0);
+  background: rgb(20, 20, 20);
+  color: rgb(255, 255, 255);
   z-index: 100;
 }
 
 /* 楽曲選択画面 */
 #song_select {
+  display: flex;
+  flex-flow: column;
   position: absolute;
   top: 0;
   right: 0;
@@ -98,15 +102,13 @@
   left: 0;
   width: 100%;
   height: 100%;
-  display: flex;
+  text-align: center;
   align-items: center;
   margin: auto;
-  transition: all 1s;
   background: rgba(0, 0, 0, 0.2);
-  z-index: 100;
 }
 
 .song_btn {
-  width: 105px;
-  height: 105px;
+  width: 30%;
+  height: 10%;
 }
