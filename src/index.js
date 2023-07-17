@@ -700,8 +700,14 @@ new P5((p5) => {
     const position = player.timer.position;
 
     // 再生開始直後に再生位置が不正な場合があるので弾く
-    if (position >= player.video.duration) {
+    if (position > player.video.duration) {
       return;
+    }
+
+    // 再生中に楽曲の終端に到達した場合、停止して待機
+    if ((position == player.video.duration) &&
+        (play_mode == 1)) {
+      play_mode = 0;
     }
 
     p5.resizeCanvas(p5.windowWidth, p5.windowHeight);
@@ -710,16 +716,6 @@ new P5((p5) => {
     // 筐体
     p5.imageMode(p5.CORNER);
     p5.image(img_frame, 0, 0);
-    p5.image(img_back, 0, 0);
-    // 再生中 or 停止中でライトの色を切り替える
-    if ((play_mode == 1) ||
-        (play_mode == 3)) {
-      p5.image(img_startstop_play, 0, 0);
-      p5.image(img_replay_play, 0, 0);
-    } else {
-      p5.image(img_startstop_stop, 0, 0);
-      p5.image(img_replay_stop, 0, 0);
-    }
 
     // VOLUMEツマミ
     p5.image(img_volume_slider, volume_slider_pos[0], volume_slider_pos[1]);
@@ -884,6 +880,18 @@ new P5((p5) => {
     p5.imageMode(p5.CORNER);
     p5.image(img_needle_cover, 0, 0);
     p5.pop();
+
+    // ボタンの描画
+    p5.image(img_back, 0, 0);
+    // 再生中 or 停止中でライトの色を切り替える
+    if ((play_mode == 1) ||
+        (play_mode == 3)) {
+      p5.image(img_startstop_play, 0, 0);
+      p5.image(img_replay_play, 0, 0);
+    } else {
+      p5.image(img_startstop_stop, 0, 0);
+      p5.image(img_replay_stop, 0, 0);
+    }
   };
 
   p5.windowResized = () => {
