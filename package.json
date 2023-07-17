@@ -1,8 +1,8 @@
 {
-  "name": "textalive-app-p5js",
+  "name": "magical_turntable",
   "private": true,
   "version": "1.0.0",
-  "description": "p5.js を使った TextAlive App API の作例",
+  "description": "『初音ミク「マジカルミライ 2023」プログラミング・コンテスト』応募作品「マジカルターンテーブル」",
   "scripts": {
     "dev": "parcel src/index.html --dist-dir dev",
     "build": "parcel build src/index.html --public-url ./ --dist-dir docs --no-source-maps",
@@ -11,17 +11,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/TextAliveJp/textalive-app-p5js.git"
+    "url": "git+https://github.com/habuka/MagicalTurntable.git"
   },
   "keywords": [
     "textalive"
   ],
-  "author": "Jun Kato <i@junkato.jp> (https://junkato.jp)",
   "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/TextAliveJp/textalive-app-p5js/issues"
-  },
-  "homepage": "https://github.com/TextAliveJp/textalive-app-p5js#readme",
+  "homepage": "https://github.com/habuka/MagicalTurntable.git#readme",
   "dependencies": {
     "p5": "^1.1.9",
     "textalive-app-api": "^0.3.0"
